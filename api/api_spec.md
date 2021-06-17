@@ -66,7 +66,43 @@ _with any id that includes a resource value serialized, you can omit any 0 gem v
 }
 ```
 
-### Game (serialized by as the gamestate)
+## Meta-datastructures
+There are some common structures that are built using various components defined above. This section describes their function and representation
+
+
+### queue
+This is an ordered list of cards that is used to represent a series of cards. lineups have a max size and always shift right before replacing, such that the last card listed is the oldest card. This queue is used to represent both the series of golems and resource cards that are available
+
+This is represented via json as an array of objects
+
+### Stack
+This is another ordered list of cards in which cards are only ever added or taken from the end of the list. This is the data structure used to represent discard piles and decks which we use to replace acquired golems/resources
+
+This is represented via json as an array of objects
+
+### list
+This is a grouping of cards in which order doesn't matter. 
+
+This is represented via json as an array of objects
+
+### Player state
+This is the object which defines the state of an individual player within the game. This resembles the following:
+
+player_id is a string that is unique per game and used to identify a specific user. This is secret, but generated server side and used as an extremely basic auth solution. Initially returned when creating / joining a game. This value is obfuscated from other clients to avoid players taking others' turns
+
+```
+{
+  id: player_id
+  coins: coin_object,
+  resources: resource_object,
+  golemns: list of golem_cards,
+  resource_cards: list of reesource_cards,
+  discard_pile: stack of resource_cards,
+}
+```
+
+
+### Game state
 This is the representation of the game. This is how all information about a specific game will be stored / represented by the backend
 ``` {
   turn_tracker: player_id,
