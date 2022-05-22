@@ -33,11 +33,11 @@ func NewGemLineUp(d *Deck[GemCard]) (LineUp) {
 // Can pick a card from anywhere
 func (l LineUp) String() string {
   var cards []string
-  for _, card  := range(l.stack) {
-    cards = append(cards, card.String())
+  for i, card  := range(l.stack) {
+    cards = append(cards, fmt.Sprintf("%v:%v", i, card.String()))
   }
 
-  return strings.Join(cards[:], "") + fmt.Sprintf("\t[%v]", len(l.deck.stack))
+  return strings.Join(cards[:], " ") + fmt.Sprintf("\t[%v]", len(l.deck.stack))
 }
 
 func (l *LineUp) Draw(index int) (GemCard, error) {
