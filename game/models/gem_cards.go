@@ -1,5 +1,6 @@
 package models
 
+import "strconv"
 import "strings"
 
 type GemValues struct {
@@ -9,10 +10,10 @@ type GemValues struct {
 	Pink   int
 }
 
-const yellowString = "\033[33m○"
-const greenString = "\033[32m○"
-const blueString = "\033[34m○"
-const pinkString = "\033[35m○"
+const yellowString = "\033[1;33m○\033[0m"
+const greenString = "\033[2;32m○"
+const blueString = "\033[2;34m○"
+const pinkString = "\033[38;5;206m○"
 const upgradeString = "🌟"
 const yieldsString = "\033[0m->"
 
@@ -42,4 +43,34 @@ func (g GemCard) String() string {
 	}
 
 	return "\033[0m[ " + g.Inputs.String() + yieldsString + g.Outputs.String() + "\033[0m ]"
+}
+
+func parseGemCard(card string) *GemCard {
+	// convert str to int
+	strArr := strings.Split(card, ",")
+	convertedArr := make([]int, len(strArr))
+
+	for i, val := range strArr {
+		convertedArr[i], _ = strconv.Atoi(val)
+	}
+
+	// Craft our card
+	inputs := convertedArr[0:4]
+	outputs := convertedArr[4:8]
+	upgrades := convertedArr[8]
+	return &GemCard{
+		Inputs: GemValues{
+			Yellow: inputs[0],
+			Green:  inputs[1],
+			Blue:   inputs[2],
+			Pink:   inputs[3],
+		},
+		Outputs: GemValues{
+			Yellow: outputs[0],
+			Green:  outputs[1],
+			Blue:   outputs[2],
+			Pink:   outputs[3],
+		},
+		Upgrades: upgrades,
+	}
 }

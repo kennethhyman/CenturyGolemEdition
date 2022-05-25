@@ -5,13 +5,33 @@ import "math/rand"
 import "time"
 import "bufio"
 import "os"
-import "strconv"
-import "strings"
 import "errors"
 
 
 type Deck [CardType any]struct {
 	stack []CardType // array of card IDs
+}
+
+func GetStartingDeck() []GemCard {
+  f, err := os.Open("../../data/starter_cards.csv")
+  if (err != nil) {
+    fmt.Println(err)
+  }
+
+  if (err != nil) {
+    fmt.Println(err)
+  }
+  scanner := bufio.NewScanner(f)
+
+  newDeck := []GemCard{}
+  for scanner.Scan(){
+    line := scanner.Text()
+    card := *parseGemCard(line)
+    newDeck = append(newDeck, card)
+  }
+
+  f.Close()
+	return newDeck
 }
 
 func NewGemDeck() *Deck[GemCard] {
@@ -61,35 +81,7 @@ func NewGemCard() GemCard {
     Upgrades: 0,
   }
 }
-func parseGemCard(card string) *GemCard {
-  // convert str to int
-  strArr := strings.Split(card, ",")
-  convertedArr := make([]int, len(strArr))
 
-  for i, val := range(strArr) {
-    convertedArr[i], _ = strconv.Atoi(val)
-  }
-
-  // Craft our card
-  inputs   := convertedArr[0:4]
-  outputs  := convertedArr [4:8]
-  upgrades := convertedArr[8]
-  return &GemCard {
-    Inputs: GemValues {
-      Yellow: inputs[0],
-      Green:  inputs[1],
-      Blue:   inputs[2],
-      Pink:   inputs[3],
-    },
-    Outputs: GemValues {
-      Yellow: outputs[0],
-      Green:  outputs[1],
-      Blue:   outputs[2],
-      Pink:   outputs[3],
-    },
-    Upgrades: upgrades,
-  }
-}
 
 func(d *Deck[_]) Shuffle() {
   //shuffle deck
