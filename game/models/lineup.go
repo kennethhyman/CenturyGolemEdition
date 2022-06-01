@@ -4,62 +4,71 @@ import "errors"
 import "strings"
 import "fmt"
 
-type LineUp struct {
-	stack []GemCard
-  deck *Deck[GemCard] // the supplying deck
+type card interface {
+	String() string
+	Cost() GemValues
 }
 
-// Can Create from deck
-func (l *LineUp) PickCard(index int) (GemCard, error) {
-  var empty_card GemCard
-  if index >= len(l.stack) {
-    return empty_card, errors.New("index is out of range")
-  }
-  
-  return empty_card, nil
+type LineUp[CardType card] struct {
+	stack []CardType
+	deck  *Deck[CardType] // the supplying deck
 }
 
-func NewGemLineUp(d *Deck[GemCard]) (LineUp) {
-  cards, _ := d.DrawCards(6)
+func NewGemLineUp() LineUp[GemCard] {
+	d := NewGemDeck()
+	d.Shuffle()
+	cards, _ := d.DrawCards(6)
 
-  lineup := LineUp{
-    deck:  d,
-    stack: cards,
-  }
-  
-  return lineup
+	lineup := LineUp[GemCard]{
+		deck:  d,
+		stack: cards,
+	}
+
+	return lineup
+}
+
+func NewGolemLinup() LineUp[GolemCard] {
+	d := NewGolemDeck()
+	d.Shuffle()
+
+	cards, _ := d.DrawCards(6)
+	return LineUp[GolemCard]{
+		deck:  d,
+		stack: cards,
+	}
 }
 
 // Can pick a card from anywhere
-func (l LineUp) String() string {
-  var cards []string
-  for i, card  := range(l.stack) {
-    cards = append(cards, fmt.Sprintf("%v:%v", i, card.String()))
-  }
+func (l LineUp[CardType]) String() string {
+	var cards []string
+	for i, card := range l.stack {
+		cards = append(cards, fmt.Sprintf("%v:%v", i, card.String()))
+	}
 
-  return strings.Join(cards[:], " ") + fmt.Sprintf("\t[%v]", len(l.deck.stack))
+	return strings.Join(cards[:], " ") + fmt.Sprintf("\t[%v]", len(l.deck.stack))
 }
 
-func (l *LineUp) Draw(index int) (GemCard, error) {
-  var card GemCard
-  var err error
-  if (index >= len(l.stack)) {
-    return card, errors.New("index is out of range")
-  }
-  
-  card = l.stack[index]
+func (l *LineUp[CardType]) Draw(index int) (CardType, error) {
+	var card CardType
+	var err error
+	if index >= len(l.stack) {
+		return card, errors.New("index is out of range")
+	}
 
-  // 
-  for index < (len(l.stack) - 1) {
-    l.stack[index] = l.stack[index + 1]
-    index++
-  }
-  l.stack[len(l.stack)-1], err = l.deck.DrawCard()
-  if (err != nil) {
-    fmt.Println("no more cards to draw")
-    // reduce the lineup length by one
-    l.stack = l.stack[0:len(l.stack) - 1]
-  }
+	card = l.stack[index]
 
-  return card, nil
-} 
+	//
+	for index < (len(l.stack) - 1) {
+		l.stack[index] = l.stack[index+1]
+		index++
+	}
+
+	l.stack[len(l.stack)-1], err = l.deck.DrawCard()
+	if err != nil {
+		fmt.Println("no more cards to draw")
+		// reduce the lineup length by one
+		l.stack = l.stack[0 : len(l.stack)-1]
+	}
+
+	return card, nil
+}

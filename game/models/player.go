@@ -1,31 +1,30 @@
 package models
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
 
 var starting_gems = []GemValues{
-	GemValues{
+	{
 		Yellow: 3,
 	},
-	GemValues{
+	{
 		Yellow: 4,
 	},
-	GemValues{
+	{
 		Yellow: 4,
 	},
-	GemValues{
+	{
 		Yellow: 3,
 		Green:  1,
 	},
-	GemValues{
+	{
 		Yellow: 3,
 		Green:  1,
 	},
 }
-
-// 2nd player gets 4 yellow crystals
-// 3rd player gets 4 yellow crystals
-// 4th player gets 3 yellow crystals and 1 green crystal
-// 5th player gets 3 yellow crystals and 1 green crystal
 
 type Player struct {
 	Hand        []GemCard
@@ -33,50 +32,120 @@ type Player struct {
 	Gems        GemValues
 	GoldCoins   int
 	SilverCoins int
-	//Golems []GolemCard
+	Golems      []GolemCard
 }
 
 func NewPlayer(turnOrder int) Player {
 	return Player{
 		Hand: GetStartingDeck(),
-		Gems: starting_gems[turnOrder],
+		Gems: starting_gems[turnOrder-1],
 	}
 }
 
-func (p *Player) PlayCard(card GemCard) error {
-	// Check that the player has the gems
-	if !p.HasInputs(card) {
-		return errors.New("Player does not have the gems to play this card")
-	}
+func (p *Player) PlayGemCard(card GemCard) error {
 	// Check that player has the card
-	if !p.HasCardAvailable(card) {
+	available, index := p.HasCardAvailable(card)
+	if !available {
 		return errors.New("Player does not have the card available for play")
 	}
 
-	// play / remove the card
-
 	// add / remove the gems
+	err := p.Gems.remove(card.Inputs)
+	if err != nil {
+		return err
+	}
+	p.Gems.add(card.Outputs)
+
+	// play / remove the card
+	p.DiscardPile = append(p.DiscardPile, card)
+	p.Hand = append(p.Hand[:index], p.Hand[index+1:]...)
+
 	return nil
 }
 
-func (p Player) HasInputs(card GemCard) bool {
-	inputs := card.Inputs
-	gems := p.Gems
-	return (gems.Yellow >= inputs.Yellow && gems.Green >= inputs.Green && gems.Blue >= inputs.Blue && gems.Pink >= inputs.Pink)
+func (p *Player) PlayUpgradeCard(card GemCard, inputs GemValues, outputs GemValues) error {
+	// Check that player has the card
+	available, index := p.HasCardAvailable(card)
+	if !available {
+		return errors.New("Player does not have the card available for play")
+	}
+
+	// Check legality of the upgrade
+	upgradeValue := outputs.effectiveValue() - inputs.effectiveValue()
+	legalUpgrade := upgradeValue >= 0 && upgradeValue <= card.Upgrades &&
+		outputs.strictlyGreater(inputs) && inputs.count() == outputs.count() &&
+		inputs.Pink == 0
+
+	if !legalUpgrade {
+		return errors.New("Invalid input / output for this card")
+	}
+
+	// add / remove the gems
+	err := p.Gems.remove(inputs)
+	if err != nil {
+		return err
+	}
+	p.Gems.add(outputs)
+
+	// play / remove the card
+	p.DiscardPile = append(p.DiscardPile, card)
+	p.Hand = append(p.Hand[:index], p.Hand[index+1:]...)
+	return nil
 }
 
-func (p Player) HasCardAvailable(card GemCard) bool {
+func (p Player) HasCardAvailable(card GemCard) (bool, int) {
 	// iterate through deck
-	for _, ownedCard := range p.Hand {
+	for i, ownedCard := range p.Hand {
 		if ownedCard == card {
-			return true
+			return true, i
 		}
 	}
 
-	return false
+	return false, -1
 }
 
-func (p *Player) GetCard(index int, gems string) error {
+func (p *Player) AddCard(card GemCard) {
+	p.Hand = append(p.Hand, card)
+}
 
-	return nil
+func (p *Player) PickupCards() {
+	p.Hand = append(p.Hand, p.DiscardPile...)
+	p.DiscardPile = []GemCard{}
+}
+
+func (p *Player) AddGolemCard(card GolemCard) {
+	p.Golems = append(p.Golems, card)
+}
+
+func (p Player) CanAfford(card card) bool {
+	player_gems := p.Gems
+	cost := card.Cost()
+
+	return player_gems.Yellow >= cost.Yellow || player_gems.Green >= cost.Green ||
+		player_gems.Blue >= cost.Blue || player_gems.Pink > cost.Pink
+}
+
+func (p Player) CardString() string {
+	var hand []string
+	for i, card := range p.Hand {
+		hand = append(hand, fmt.Sprintf("%v : %v", i, card))
+	}
+	return fmt.Sprintf("%v\tdiscard: %v", strings.Join(hand[:], " "), len(p.DiscardPile))
+}
+
+func (p Player) GolemString() string {
+	var golems []string
+	for _, card := range p.Golems {
+		golems = append(golems, card.String())
+	}
+
+	return fmt.Sprintf("Golems: %v", strings.Join(golems[:], " "))
+}
+
+func (p Player) String() string {
+	hand := p.CardString()
+	golems := p.GolemString()
+	coins := fmt.Sprintf("gold: %v\tsilver: %v", p.GoldCoins, p.SilverCoins)
+
+	return fmt.Sprintf("%v\n%v\n%v\n%v\n", coins, golems, hand, p.Gems.String())
 }
