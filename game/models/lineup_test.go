@@ -7,7 +7,7 @@ import "github.com/stretchr/testify/assert"
 func TestLineup(t *testing.T) {
 	gem_deck := NewGemDeck()
 	start_deck_size := len(gem_deck.stack)
-	lineup := NewGemLineUp(gem_deck)
+	lineup := NewGemLineUp()
 	fmt.Printf("%v\n", lineup)
 
 	// test intial deck setup
@@ -16,8 +16,7 @@ func TestLineup(t *testing.T) {
 }
 
 func TestLineUpDraw(t *testing.T) {
-	gem_deck := NewGemDeck()
-	lineup := NewGemLineUp(gem_deck)
+	lineup := NewGemLineUp()
 	fmt.Printf("%v\n", lineup)
 
 	first_card := lineup.stack[0]
