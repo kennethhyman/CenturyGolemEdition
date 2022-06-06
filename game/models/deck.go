@@ -1,18 +1,24 @@
 package models
 
-import "fmt"
-import "math/rand"
-import "time"
-import "bufio"
-import "os"
-import "errors"
+import (
+	"bufio"
+	"embed"
+	"errors"
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+//go:embed resources/*
+var resources embed.FS
 
 type Deck[CardType any] struct {
 	stack []CardType // array of card IDs
 }
 
 func GetStartingDeck() []GemCard {
-	f, err := os.Open("../data/starter_cards.csv")
+
+	f, err := resources.Open("resources/starter_cards.csv")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -35,7 +41,7 @@ func GetStartingDeck() []GemCard {
 
 func NewGemDeck() *Deck[GemCard] {
 	// Read in values of cards in order
-	f, err := os.Open("../data/cards.csv")
+	f, err := resources.Open("resources/cards.csv")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -61,7 +67,7 @@ func NewGemDeck() *Deck[GemCard] {
 
 func NewGolemDeck() *Deck[GolemCard] {
 	// Read in values of cards in order
-	f, err := os.Open("../data/golems.csv")
+	f, err := resources.Open("resources/golems.csv")
 	if err != nil {
 		fmt.Println(err)
 	}

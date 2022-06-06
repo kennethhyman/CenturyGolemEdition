@@ -55,6 +55,7 @@ func (p *Player) PlayGemCard(card GemCard) error {
 		return err
 	}
 	p.Gems.add(card.Outputs)
+	fmt.Printf("New gem count: %v\n", p.Gems)
 
 	// play / remove the card
 	p.DiscardPile = append(p.DiscardPile, card)

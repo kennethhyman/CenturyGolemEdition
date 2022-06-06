@@ -12,18 +12,25 @@ type Game struct {
 	LooseGems     []GemValues
 	SilverCoins   int
 	GoldCoins     int
-	LastPlayer    *Player
 	CurrentPlayer int
+	GolemLimit    int
 }
 
 func NewGame(players int) *Game {
+	var golemLimit int
+	if players > 3 {
+		golemLimit = 5
+	} else {
+		golemLimit = 6
+	}
 	game := Game{
 		Golems:        NewGolemLinup(),
 		GemCards:      NewGemLineUp(),
+		LooseGems:     make([]GemValues, 6),
 		SilverCoins:   2 * players,
 		GoldCoins:     2 * players,
-		LastPlayer:    nil,
 		CurrentPlayer: 0,
+		GolemLimit:    golemLimit,
 	}
 
 	for i := 1; i <= players; i++ {
@@ -34,17 +41,32 @@ func NewGame(players int) *Game {
 }
 
 // play gem card
-func (g *Game) PlayGemCard(card GemCard) error {
+func (g *Game) PlayGemCard() error {
 	player := g.Players[g.CurrentPlayer]
-	err := player.PlayGemCard(card)
+
+	fmt.Printf("which card would you like to play?\n%v\n", player.Hand)
+	var index int
+	fmt.Scan(&index)
+
+	err := player.PlayGemCard(player.Hand[index])
+	fmt.Printf("%v\n", err)
 	return err
 }
 
 // get gem card
-func (g *Game) GetGemCard(index int) error {
+func (g *Game) GetGemCard() error {
 	player := g.Players[g.CurrentPlayer]
+	var index int
+
+	fmt.Printf("Which gemcard would you like to pick up?\n%v\n", g.GemCards.String())
+	for _, err := fmt.Scan(&index); err != nil; {
+		fmt.Printf("invalid input...")
+		fmt.Printf("Which gemcard would you like to pick up?\n%v\n", g.GemCards.String())
+	}
+
 	var cost string
 	if index > 0 {
+		fmt.Printf("Which gems would you like to place on the previous cards? (select %v gem)\n", index)
 		fmt.Scanln(&cost)
 
 		if len(cost) != index {
@@ -97,15 +119,19 @@ func (g *Game) PickUpGemCards() {
 }
 
 // buy golems
-func (g *Game) BuyGolem(index int) error {
+func (g *Game) BuyGolem() error {
 	player := g.Players[g.CurrentPlayer]
+	var index int
+
+	fmt.Printf("Which golem would you like to buy?\n%v\n", g.Golems)
+	fmt.Scan(&index)
 	// check index in bounds
-	if index >= len(g.Golems.stack) || index < 1 {
+	if index >= len(g.Golems.stack) || index < 0 {
 		return errors.New("There is no golem at that index")
 	}
 
 	// check player has the gems
-	golem := g.Golems.stack[index-1]
+	golem := g.Golems.stack[index]
 	if !player.CanAfford(golem) {
 		return errors.New("You cannot afford this card")
 	}
@@ -139,4 +165,36 @@ func (g Game) String() string {
 
 	return fmt.Sprintf("%v\n%v\n%v\n\n%v\n",
 		available_coins, golem_string, gemcard_string, player_string)
+}
+
+func (g Game) Finished() bool {
+	var golem_limit_reached = false
+
+	for _, player := range g.Players {
+		if len(player.Golems) >= g.GolemLimit {
+			golem_limit_reached = true
+			break
+		}
+	}
+
+	// game is over when first player is up and someone has X golems
+	return (g.CurrentPlayer == 0) && golem_limit_reached
+}
+
+func (g *Game) NextTurn() {
+	current_player := g.Players[g.CurrentPlayer]
+
+	// Trigger gem discards
+	for current_player.Gems.count() > 10 {
+		var user_input string
+		fmt.Printf("You have too many gems, you must discard down to 10\n%v\n", current_player.Gems)
+		fmt.Scan(&user_input)
+		discards, err := parseGemInput(user_input)
+		if err == nil {
+			current_player.Gems.remove(discards)
+		}
+	}
+	// set next Players
+
+	g.CurrentPlayer = (g.CurrentPlayer + 1) % len(g.Players)
 }
