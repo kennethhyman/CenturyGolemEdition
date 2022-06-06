@@ -41,6 +41,7 @@ func main() {
 			game.PickUpGemCards()
 		}
 
+		fmt.Printf("%v\n", err)
 		// change player
 		if err == nil {
 			game.NextTurn()

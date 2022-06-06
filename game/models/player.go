@@ -106,7 +106,9 @@ func (p Player) HasCardAvailable(card GemCard) (bool, int) {
 }
 
 func (p *Player) AddCard(card GemCard) {
+	fmt.Printf("Adding card %v\n", card)
 	p.Hand = append(p.Hand, card)
+	fmt.Printf("Hand addr: %p\n", &p.Hand)
 }
 
 func (p *Player) PickupCards() {

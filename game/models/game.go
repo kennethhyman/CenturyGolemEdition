@@ -50,6 +50,8 @@ func (g *Game) PlayGemCard() error {
 
 	err := player.PlayGemCard(player.Hand[index])
 	fmt.Printf("%v\n", err)
+
+	g.Players[g.CurrentPlayer] = player
 	return err
 }
 
@@ -57,6 +59,7 @@ func (g *Game) PlayGemCard() error {
 func (g *Game) GetGemCard() error {
 	player := g.Players[g.CurrentPlayer]
 	var index int
+	var err error
 
 	fmt.Printf("Which gemcard would you like to pick up?\n%v\n", g.GemCards.String())
 	for _, err := fmt.Scan(&index); err != nil; {
@@ -72,28 +75,29 @@ func (g *Game) GetGemCard() error {
 		if len(cost) != index {
 			return errors.New("You must pay one gem per card you bypass")
 		}
+		gemCost, err := parseGemInput(cost)
+
+		if err != nil {
+			return err
+		}
+
+		err = player.Gems.remove(gemCost)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			return err
+		}
 	}
 
-	gemCost, err := parseGemInput(cost)
-
-	if err != nil {
-		return err
-	}
-
-	// Remove gems first
-	err = player.Gems.remove(gemCost)
-	if err != nil {
-		return err
-	}
 	// Draw card
 	card, err := g.GemCards.Draw(index)
 	if err != nil {
+		fmt.Printf("%v\n", err)
 		return err
 	}
 	player.AddCard(card)
-	player.Gems.add(g.LooseGems[index-1])
-	g.LooseGems[index-1] = GemValues{}
-
+	player.Gems.add(g.LooseGems[index])
+	g.LooseGems[index] = GemValues{}
+	fmt.Printf("Hand addr: %p\n", &player.Hand)
 	// Add gems to piles
 	for i, gem := range cost {
 		pile := g.LooseGems[i]
@@ -109,6 +113,8 @@ func (g *Game) GetGemCard() error {
 			pile.Pink += 1
 		}
 	}
+
+	g.Players[g.CurrentPlayer] = player
 	return err
 }
 
@@ -116,6 +122,7 @@ func (g *Game) GetGemCard() error {
 func (g *Game) PickUpGemCards() {
 	player := g.Players[g.CurrentPlayer]
 	player.PickupCards()
+	g.Players[g.CurrentPlayer] = player
 }
 
 // buy golems
@@ -153,6 +160,7 @@ func (g *Game) BuyGolem() error {
 		}
 	}
 
+	g.Players[g.CurrentPlayer] = player
 	return nil
 }
 
