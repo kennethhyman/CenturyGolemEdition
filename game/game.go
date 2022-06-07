@@ -8,7 +8,8 @@ import (
 )
 
 type model struct {
-	game Game
+	game   Game
+	action GameAction
 }
 
 func initialModel() model {
@@ -25,13 +26,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "esc":
 			return m, tea.Quit
+		case "1":
+			m.action = PlayGemCard
+		case "2":
+			m.action = GetGemCard
+		case "3":
+			m.action = Rest
+		case "4":
+			m.action = GetGolemCard
 		}
 	}
 	return m, nil
 }
 
 func (m model) View() string {
-	return m.game.String()
+	return fmt.Sprintf("%v\n%v", m.game.String(), m.action.view())
 }
 
 func main() {
