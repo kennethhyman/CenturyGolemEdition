@@ -9,11 +9,11 @@ import (
 
 type model struct {
 	game   Game
-	action GameAction
+	action ActionMenu
 }
 
 func initialModel() model {
-	return model{game: *NewGame(2)}
+	return model{game: *NewGame(2), action: NewActionMenu(PlayGemCard)}
 }
 
 func (m model) Init() tea.Cmd {
@@ -27,20 +27,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "esc":
 			return m, tea.Quit
 		case "1":
-			m.action = PlayGemCard
+			m.action = NewActionMenu(PlayGemCard)
 		case "2":
-			m.action = GetGemCard
+			m.action = NewActionMenu(GetGemCard)
 		case "3":
-			m.action = Rest
+			m.action = NewActionMenu(Rest)
 		case "4":
-			m.action = GetGolemCard
+			m.action = NewActionMenu(GetGolemCard)
 		}
 	}
 	return m, nil
 }
 
 func (m model) View() string {
-	return fmt.Sprintf("%v\n%v", m.game.String(), m.action.view())
+	return fmt.Sprintf("%v\n%v", m.game.String(), m.action.View())
 }
 
 func main() {
