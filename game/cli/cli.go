@@ -14,11 +14,11 @@ type model struct {
 var actionsChoices = []Viewable{PlayGemCard, GetGemCard, Rest, GetGolemCard}
 
 func InitialModel() model {
-	turnSelector := Selector{options: actionsChoices, selected: PlayGemCard, focused: true}
-
+	turnSelector := Selector{options: actionsChoices, focused: true}
+	views := []tea.Model{PlayGemCard, GetGemCard, Rest, GetGolemCard}
 	return model{
 		game:           *NewGame(2),
-		actionSelector: turnSelector,
+		actionSelector: ViewSelector{turnSelector, views, false, true},
 	}
 }
 

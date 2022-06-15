@@ -1,5 +1,10 @@
 package cli
 
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	//"github.com/charmbracelet/lipgloss"
+)
+
 type GameAction string
 
 const (
@@ -9,6 +14,14 @@ const (
 	GetGolemCard GameAction = "GetGolemCard"
 )
 
+func (ga GameAction) Init() tea.Cmd {
+	return nil
+}
+
 func (ga GameAction) View() string {
 	return string(ga)
+}
+
+func (ga GameAction) Update(tea.Msg) (tea.Model, tea.Cmd) {
+	return ga, nil
 }
