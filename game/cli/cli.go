@@ -3,21 +3,23 @@ package cli
 import (
 	"fmt"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/kennethhyman/CenturyGolemEdition/cli/turns"
 	. "github.com/kennethhyman/CenturyGolemEdition/models"
 )
 
 type model struct {
-	game           Game
-	actionSelector tea.Model
+	actionSelector ViewSelector
 }
 
-var actionsChoices = []Viewable{PlayGemCard, GetGemCard, Rest, GetGolemCard}
+var game = NewGame(2)
+
+var restView = turns.NewRestView(game)
+var actionsChoices = []Viewable{turns.PlayGemCard, turns.GetGemCard, turns.Rest, turns.GetGolemCard}
 
 func InitialModel() model {
 	turnSelector := Selector{options: actionsChoices, focused: true}
-	views := []tea.Model{PlayGemCard, GetGemCard, Rest, GetGolemCard}
+	views := []turns.TurnView{turns.NewPlayCardView(game), turns.NewGemCardView(game), turns.NewRestView(game), turns.NewGolemCardView(game)}
 	return model{
-		game:           *NewGame(2),
 		actionSelector: ViewSelector{turnSelector, views, false, true},
 	}
 }
@@ -35,12 +37,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// pass the message along
-	m.actionSelector, _ = m.actionSelector.Update(msg)
-
+	// pass the message along (and cast to view selector)
+	selector, _ := m.actionSelector.Update(msg)
+	m.actionSelector = selector.(ViewSelector)
 	return m, nil
 }
 
 func (m model) View() string {
-	return fmt.Sprintf("%v\n%v\n", m.game.String(), m.actionSelector.View())
+	return fmt.Sprintf("%v\n%v\n", game.String(), m.actionSelector.View())
 }

@@ -119,10 +119,12 @@ func (g *Game) GetGemCard() error {
 }
 
 // pick up cards
-func (g *Game) PickUpGemCards() {
+func (g *Game) PickUpGemCards() error {
 	player := g.Players[g.CurrentPlayer]
 	player.PickupCards()
 	g.Players[g.CurrentPlayer] = player
+
+	return nil
 }
 
 // buy golems

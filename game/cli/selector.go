@@ -40,11 +40,11 @@ func (s Selector) View() string {
 
 	var str string
 	for i, option := range s.options {
-		str = style.Render(fmt.Sprintf("%v: %v\t", i+1, option.View()))
+		str = fmt.Sprintf("%v: %v\t", i+1, option.View())
 		if s.selectedOption() == option {
 			b.WriteString(selectedStyle.Render(str))
 		} else {
-			b.WriteString(str)
+			b.WriteString(style.Render(str))
 		}
 	}
 
@@ -66,4 +66,8 @@ func (s Selector) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return s, nil
+}
+
+func (s *Selector) Reset() {
+	s.selected = 0
 }

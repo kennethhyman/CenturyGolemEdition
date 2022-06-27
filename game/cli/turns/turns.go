@@ -1,8 +1,7 @@
-package cli
+package turns
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	//"github.com/charmbracelet/lipgloss"
 )
 
 type GameAction string
