@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+option go_package = "khyman.dev/grpc/century-golem/game-server";
+option java_package = "dev.khyman.grpc.century-golem.game";
+option java_outer_classname = "CenturyGolemProto";
+
+
+package game_server;
+
+// Interface exported by the server.
+service Game {
+  // A simple RPC.
+  //
+  // Obtains the feature at a given position.
+  //
+  // A feature with an empty name is returned if there's no feature at the given
+  // position.
+  rpc GetCard(GetCardMessage) returns (GemCard) {}
+
+  // A server-to-client streaming RPC.
+  //
+  // Obtains the Features available within the given Rectangle.  Results are
+  // streamed rather than returned at once (e.g. in a response message with a
+  // repeated field), as the rectangle may cover a large area and contain a
+  // huge number of features.
+  /* rpc GetGame(GameId) returns (GetGameResponse) {} */
+
+  /* // A client-to-server streaming RPC. */
+  /* // */
+  /* // Accepts a stream of Points on a route being traversed, returning a */
+  /* // RouteSummary when traversal is completed. */
+  /* rpc GetActions(GameId) returns (stream GameAction) {} */
+
+  /* // A Bidirectional streaming RPC. */
+  /* // */
+  /* // Accepts a stream of RouteNotes sent while a route is being traversed, */
+  /* // while receiving other RouteNotes (e.g. from other users). */
+  /* rpc PlayAction(GameAction) returns (Game) {} */
+}
+
+message GetCardMessage{}
+
+message GemValue {
+  int32 yellow = 1;
+  int32 green = 2;
+  int32 blue = 3;
+  int32 pink = 4;
+}
+
+message GemCard {
+  GemValue in = 1;
+  GemValue out = 2;
+}
+
+message GolemCard {
+  GemValue cost = 1;
+  int32 value = 2;
+}
+
+message CreateGameRequest {
+  int32 player_count = 1;
+}
+
+message CreateGameResponse { 
+  int32 player_count = 1;
+  repeated GemCard gem_lineup = 2;
+  repeated GolemCard golem_lineup = 3;
+  repeated GemValue player_gems = 4;
+}
