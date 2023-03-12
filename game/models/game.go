@@ -6,7 +6,7 @@ import (
 )
 
 type Game struct {
-	Players       []Player
+	Players       []*Player
 	Golems        LineUp[GolemCard]
 	GemCards      LineUp[GemCard]
 	LooseGems     []GemValues
@@ -41,15 +41,11 @@ func NewGame(players int) *Game {
 }
 
 // play gem card
-func (g *Game) PlayGemCard() error {
+func (g *Game) PlayGemCard(gem_card GemCard, discards GemValues) error {
 	player := g.Players[g.CurrentPlayer]
+  
 
-	fmt.Printf("which card would you like to play?\n%v\n", player.Hand)
-	var index int
-	fmt.Scan(&index)
-
-	err := player.PlayGemCard(player.Hand[index])
-	fmt.Printf("%v\n", err)
+	err := player.PlayGemCard(gem_card, discards)
 
 	g.Players[g.CurrentPlayer] = player
 	return err
@@ -135,12 +131,12 @@ func (g *Game) BuyGolem() error {
 	fmt.Printf("Which golem would you like to buy?\n%v\n", g.Golems)
 	fmt.Scan(&index)
 	// check index in bounds
-	if index >= len(g.Golems.stack) || index < 0 {
+	if index >= len(g.Golems.Stack) || index < 0 {
 		return errors.New("There is no golem at that index")
 	}
 
 	// check player has the gems
-	golem := g.Golems.stack[index]
+	golem := g.Golems.Stack[index]
 	if !player.CanAfford(golem) {
 		return errors.New("You cannot afford this card")
 	}

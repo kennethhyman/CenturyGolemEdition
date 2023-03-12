@@ -16,38 +16,33 @@ import (
 type gameServer struct {
 	pb.UnimplementedGameServer
 
-  gemcards models.Deck[models.GemCard]
+  games []models.Game
 }
 
-
-func marshallCard(card models.GemCard) (*pb.GemCard) {
-  return &pb.GemCard{
-    In: &pb.GemValue {
-      Yellow: int32(card.Inputs.Yellow),
-      Green: int32(card.Inputs.Green),
-      Blue: int32(card.Inputs.Blue),
-      Pink: int32(card.Inputs.Pink),
-    },
-    Out: &pb.GemValue {
-      Yellow: int32(card.Outputs.Yellow),
-      Green: int32(card.Outputs.Green),
-      Blue: int32(card.Outputs.Blue),
-      Pink: int32(card.Outputs.Pink),
-    },
-  }
+func (s *gameServer) NewGame(ctx context.Context, newGameInfo *pb.CreateGameMessage) (*pb.CreateGameResponse, error) {
+  newGame := models.NewGame(int(newGameInfo.PlayerCount))
+  fmt.Print("CREATING NEW GAME\n")
+  return MarshallGame(newGame), nil
 }
 
-func (s *gameServer) GetCard(ctx context.Context, _ *pb.GetCardMessage) (*pb.GemCard, error) {
-  card, _ := s.gemcards.DrawCard()
+func (s *gameServer) PlayGemCard(ctx context.Context, playGemCardInfo *pb.PlayGemCardMessage) (*pb.PlayGemCardResponse, error){
+  // TODO Check for correct player making the action
+  // find game info
+  game := s.games[playGemCardInfo.GameId]
+  card := *UnmarshallGemCard(playGemCardInfo.Card)
+  discards := *UnmarshallGems(playGemCardInfo.Discarded)
+   
+  // update game with appropriate play gem card playGemCardInfo
+  _ = game.PlayGemCard(card, discards)
+  
+  // update the game state stored on the server
 
-  return marshallCard(card), nil
+  // return new gamestate
+  return (*pb.PlayGemCardResponse)(MarshallGame(&game)), nil
 }
-
 
 func newServer() *gameServer {
-	s := &gameServer{
-    gemcards: *models.NewGemDeck(),
-  }
+	s := &gameServer{}
 	return s
 }
 

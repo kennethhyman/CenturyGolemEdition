@@ -10,7 +10,7 @@ type card interface {
 }
 
 type LineUp[CardType card] struct {
-	stack []CardType
+	Stack []CardType
 	deck  *Deck[CardType] // the supplying deck
 }
 
@@ -21,7 +21,7 @@ func NewGemLineUp() LineUp[GemCard] {
 
 	lineup := LineUp[GemCard]{
 		deck:  d,
-		stack: cards,
+		Stack: cards,
 	}
 
 	return lineup
@@ -34,14 +34,14 @@ func NewGolemLinup() LineUp[GolemCard] {
 	cards, _ := d.DrawCards(6)
 	return LineUp[GolemCard]{
 		deck:  d,
-		stack: cards,
+		Stack: cards,
 	}
 }
 
 // Can pick a card from anywhere
 func (l LineUp[CardType]) String() string {
 	var cards []string
-	for i, card := range l.stack {
+	for i, card := range l.Stack {
 		cards = append(cards, fmt.Sprintf("%v:%v", i, card.String()))
 	}
 
@@ -51,23 +51,23 @@ func (l LineUp[CardType]) String() string {
 func (l *LineUp[CardType]) Draw(index int) (CardType, error) {
 	var card CardType
 	var err error
-	if index >= len(l.stack) {
+	if index >= len(l.Stack) {
 		return card, errors.New("index is out of range")
 	}
 
-	card = l.stack[index]
+	card = l.Stack[index]
 
 	//
-	for index < (len(l.stack) - 1) {
-		l.stack[index] = l.stack[index+1]
+	for index < (len(l.Stack) - 1) {
+		l.Stack[index] = l.Stack[index+1]
 		index++
 	}
 
-	l.stack[len(l.stack)-1], err = l.deck.DrawCard()
+	l.Stack[len(l.Stack)-1], err = l.deck.DrawCard()
 	if err != nil {
 		fmt.Println("no more cards to draw")
 		// reduce the lineup length by one
-		l.stack = l.stack[0 : len(l.stack)-1]
+		l.Stack = l.Stack[0 : len(l.Stack)-1]
 	}
 
 	return card, nil

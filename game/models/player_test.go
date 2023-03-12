@@ -26,7 +26,7 @@ func TestPlayerPlayGemCard(t *testing.T) {
 		},
 	}
 
-	err := player_1.PlayGemCard(yellowCard)
+	err := player_1.PlayGemCard(yellowCard, GemValues{})
 	yellow_to_green := GemCard{
 		Inputs: GemValues{
 			Yellow: 2,
@@ -47,18 +47,39 @@ func TestPlayerPlayGemCard(t *testing.T) {
 		Outputs: GemValues{
 			Pink: 2,
 		},
-	})
+	}, GemValues{})
 
 	assert.NotEqual(t, nil, err, "Playing a card you don't have should throw an error")
 	assert.Equal(t, player_gems, player_1.Gems, "If you cant play a card, gems don't change")
 
-	err = player_1.PlayGemCard(yellow_to_green)
+	err = player_1.PlayGemCard(yellow_to_green, GemValues{})
 	assert.Equal(t, nil, err, "Player should legally be allowed to play gems")
 	expected_gems := GemValues{
 		Yellow: 3,
 		Green:  2,
 	}
 	assert.Equal(t, expected_gems, player_1.Gems, fmt.Sprintf("The player should end with %v", expected_gems))
+
+  player_1.Gems = GemValues{Blue: 10}
+  blue_to_many := GemCard{
+    Inputs: GemValues{
+      Blue: 2,
+    },
+    Outputs: GemValues{
+      Yellow: 4,
+    },
+  }
+
+  err = player_1.PlayGemCard(blue_to_many, GemValues{})
+  assert.NotEqual(t, err, nil, "Player should not be able to end a turn with too many gems")
+  assert.Equal(t, player_1.Gems, GemValues{Blue: 10}, "player gem values should be reset after illegal move")
+
+  err = player_1.PlayGemCard(blue_to_many, GemValues{Green: 2}) 
+  assert.NotEqual(t, err, nil, "Player should not be able to discard gems they don't have")
+
+
+  err = player_1.PlayGemCard(blue_to_many, GemValues{Yellow: 2})
+  assert.Equal(t, player_1.Gems, GemValues{Blue: 8, Yellow: 2}, "Player should end with appropriate gems in hand after discarding")
 }
 
 func TestPlayerPlayUpgradeCard(t *testing.T) {

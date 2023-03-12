@@ -16,7 +16,8 @@ service Game {
   // A feature with an empty name is returned if there's no feature at the given
   // position.
   rpc GetCard(GetCardMessage) returns (GemCard) {}
-
+  rpc NewGame(CreateGameMessage) returns (CreateGameResponse) {}
+  rpc PlayGemCard(PlayGemCardMessage) returns (PlayGemCardResponse) {}
   // A server-to-client streaming RPC.
   //
   // Obtains the Features available within the given Rectangle.  Results are
@@ -38,9 +39,11 @@ service Game {
   /* rpc PlayAction(GameAction) returns (Game) {} */
 }
 
-message GetCardMessage{}
+message GetCardMessage{
+  int32 game_id = 1;
+}
 
-message GemValue {
+message GemValues {
   int32 yellow = 1;
   int32 green = 2;
   int32 blue = 3;
@@ -48,22 +51,46 @@ message GemValue {
 }
 
 message GemCard {
-  GemValue in = 1;
-  GemValue out = 2;
+  GemValues in = 1;
+  GemValues out = 2;
+  int32    upgrades = 3;
 }
 
 message GolemCard {
-  GemValue cost = 1;
-  int32 value = 2;
+  GemValues inputs = 1;
+  int32 points = 2;
 }
 
-message CreateGameRequest {
+message CreateGameMessage {
   int32 player_count = 1;
 }
 
-message CreateGameResponse { 
-  int32 player_count = 1;
+message CreateGameResponse {
+  GameState game_state = 1;
+}
+
+message GameState { 
+  repeated Player players = 1;
   repeated GemCard gem_lineup = 2;
   repeated GolemCard golem_lineup = 3;
-  repeated GemValue player_gems = 4;
+  repeated GemValues player_gems = 4;
+}
+
+message PlayGemCardMessage {
+  int32 game_id = 1;
+  GemCard card = 2;
+  GemValues discarded = 3;
+}
+
+message PlayGemCardResponse {
+  GameState game_state = 2;
+}
+
+message Player {
+  int32 gold_coins = 1;
+  int32 silver_coins = 2;
+  GemValues gems = 3;
+  repeated GolemCard golems = 4;
+  repeated GemCard hand = 5;
+  repeated GemCard discard_pile = 6;
 }

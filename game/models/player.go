@@ -35,27 +35,42 @@ type Player struct {
 	Golems      []GolemCard
 }
 
-func NewPlayer(turnOrder int) Player {
-	return Player{
+func NewPlayer(turnOrder int) *Player {
+	return &Player{
 		Hand: GetStartingDeck(),
 		Gems: starting_gems[turnOrder-1],
 	}
 }
 
-func (p *Player) PlayGemCard(card GemCard) error {
+func (p *Player) PlayGemCard(card GemCard, discards GemValues) error {
 	// Check that player has the card
+  original_state := *p
 	available, index := p.HasCardAvailable(card)
+
 	if !available {
-		return errors.New("Player does not have the card available for play")
+		 return errors.New("Player does not have the card available for play")
 	}
 
 	// add / remove the gems
 	err := p.Gems.remove(card.Inputs)
+
 	if err != nil {
+    p = &original_state
 		return err
 	}
+
 	p.Gems.add(card.Outputs)
-	fmt.Printf("New gem count: %v\n", p.Gems)
+
+  err = p.Gems.remove(discards)
+  if err != nil {
+    p = &original_state
+    return err
+  }
+
+  if p.Gems.count() > 10 {
+    p = &original_state
+    return errors.New("Player cannot keep more than 10 gems after turn")
+  }
 
 	// play / remove the card
 	p.DiscardPile = append(p.DiscardPile, card)

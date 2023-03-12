@@ -112,6 +112,8 @@ func (g GemCard) Cost() GemValues {
 	return g.Inputs
 }
 
+
+
 func parseGemCard(card string) *GemCard {
 	// convert str to int
 	strArr := strings.Split(card, ",")
