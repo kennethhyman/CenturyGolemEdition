@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.SILENT: build_protos build_game
+.SILENT: build_protos build_game test_game
 
 
 all: build_protos build_game
@@ -15,6 +15,6 @@ build_protos:
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 		grpc/CenturyGolemEdition.proto
 
-test_game:
+test_game: build_game
 	echo "running tests..."
-	go test ./models/
+	go test ./models/ -v

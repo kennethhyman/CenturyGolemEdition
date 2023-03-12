@@ -2,7 +2,7 @@ package models
 
 import (
 	"errors"
-	"fmt"
+  "fmt"
 	"strings"
 )
 
@@ -42,9 +42,18 @@ func NewPlayer(turnOrder int) *Player {
 	}
 }
 
+func (p *Player) Copy(desired Player) {
+  p.Hand = desired.Hand
+  p.DiscardPile = desired.DiscardPile
+  p.Gems = desired.Gems
+  p.GoldCoins = desired.GoldCoins
+  p.SilverCoins = desired.SilverCoins
+  p.Golems = desired.Golems
+}
+
 func (p *Player) PlayGemCard(card GemCard, discards GemValues) error {
 	// Check that player has the card
-  original_state := *p
+  var original_state Player = *p
 	available, index := p.HasCardAvailable(card)
 
 	if !available {
@@ -55,7 +64,7 @@ func (p *Player) PlayGemCard(card GemCard, discards GemValues) error {
 	err := p.Gems.remove(card.Inputs)
 
 	if err != nil {
-    p = &original_state
+    p.Copy(original_state)
 		return err
 	}
 
@@ -63,12 +72,12 @@ func (p *Player) PlayGemCard(card GemCard, discards GemValues) error {
 
   err = p.Gems.remove(discards)
   if err != nil {
-    p = &original_state
+    p.Copy(original_state)
     return err
   }
 
   if p.Gems.count() > 10 {
-    p = &original_state
+    p.Copy(original_state)
     return errors.New("Player cannot keep more than 10 gems after turn")
   }
 
@@ -121,9 +130,7 @@ func (p Player) HasCardAvailable(card GemCard) (bool, int) {
 }
 
 func (p *Player) AddCard(card GemCard) {
-	fmt.Printf("Adding card %v\n", card)
 	p.Hand = append(p.Hand, card)
-	fmt.Printf("Hand addr: %p\n", &p.Hand)
 }
 
 func (p *Player) PickupCards() {
