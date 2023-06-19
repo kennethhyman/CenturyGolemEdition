@@ -8,24 +8,18 @@ import (
   "context"
   "time"
 	game_server "github.com/kennethhyman/CenturyGolemEdition/grpc"
-
-	//. "github.com/kennethhyman/CenturyGolemEdition/models"
 	pb "github.com/kennethhyman/CenturyGolemEdition/grpc"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"log"
 )
 
 type model struct {
-  game *pb.CreateGameResponse
+  game Game
   client *pb.GameClient
 }
-
 
 var actionsChoices = []Viewable{turns.PlayGemCard, turns.GetGemCard, turns.Rest, turns.GetGolemCard}
 
 func InitialModel() model {
-  client := connectToClient("localhost:50051")
+  client := CreateGameClient()
 
   ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
   defer cancel()
@@ -34,23 +28,20 @@ func InitialModel() model {
     PlayerCount: 3,
   }
 
-  game, _ := (*client).NewGame(ctx, msg)
-  fmt.Printf("game: %v\n", game)
+  game, _ := client.NewGame(ctx, msg)
 
 	//views := []turns.TurnView{turns.NewPlayCardView(game), turns.NewGemCardView(game), turns.NewRestView(game), turns.NewGolemCardView(game)}
 	return model {
-    game: game,
-    client: client,
+    game: UnmarshallGame(game),
+    client: &client,
 	}
 }
 
 func (m model) Init() tea.Cmd {
-  fmt.Printf("init success\n")
 	return nil
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-  fmt.Printf("Updated\n")
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -63,40 +54,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func CardToString(card *pb.GemCard) string {
-  card_string := "CARD" //fmt.Sprintf("%vy%vg%vb%vp", card.In.Yellow, card.In.Green, card.In.Blue, card.In.Pink)
-  fmt.Printf("%v\n", card_string)
-
-  return card_string
+func CardToString(card GemCard) string {
+  return fmt.Sprintf("%vy%vg%vb%vp", card.In.Yellow, card.In.Green, card.In.Blue, card.In.Pink)
 }
 
 func (m model) View() string {
-  var view string
-  fmt.Printf("%v\n", m.game)
-  for _, card := range(m.game.GameState.GemLineup) {
-    if card != nil {
-      view = fmt.Sprintf("%v\t", CardToString(card))
-    }
-  }
-
-	return fmt.Sprintf("%v\n", view)
-}
-
-func connectToClient(server string) *pb.GameClient {
-
-  var opts []grpc.DialOption
-  opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
-  fmt.Printf("client mode\n")
-
-  conn, err := grpc.Dial("localhost:50051", opts...)
-  fmt.Printf("connecting to server\n")
-  if err != nil {
-    log.Fatalf("fail to dial: %v", err)
-  }
-
-  defer conn.Close()
-  client := pb.NewGameClient(conn)
-  fmt.Print("connected successfully\n");
-  return &client
+  return fmt.Sprintf("%v\n", m.game)
 }

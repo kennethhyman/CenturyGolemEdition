@@ -57,7 +57,7 @@ message GemCard {
 }
 
 message GolemCard {
-  GemValues inputs = 1;
+  GemValues cost = 1;
   int32 points = 2;
 }
 
@@ -72,8 +72,12 @@ message CreateGameResponse {
 message GameState { 
   repeated Player players = 1;
   repeated GemCard gem_lineup = 2;
-  repeated GolemCard golem_lineup = 3;
-  repeated GemValues player_gems = 4;
+  int32 gem_deck_size = 3;
+  repeated GolemCard golem_lineup = 4;
+  int32 golem_deck_size = 5;
+  repeated GemValues player_gems = 6;
+  int32 gold_coins = 7;
+  int32 silver_coins = 8;
 }
 
 message PlayGemCardMessage {

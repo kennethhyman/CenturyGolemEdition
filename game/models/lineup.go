@@ -31,7 +31,7 @@ func NewGolemLinup() LineUp[GolemCard] {
 	d := NewGolemDeck()
 	d.Shuffle()
 
-	cards, _ := d.DrawCards(6)
+	cards, _ := d.DrawCards(5)
 	return LineUp[GolemCard]{
 		deck:  d,
 		Stack: cards,
@@ -46,6 +46,10 @@ func (l LineUp[CardType]) String() string {
 	}
 
 	return strings.Join(cards[:], " ") + fmt.Sprintf("\t[%v]", len(l.deck.stack))
+}
+
+func (l LineUp[CardType]) Remaining() int {
+  return l.deck.Length()
 }
 
 func (l *LineUp[CardType]) Draw(index int) (CardType, error) {

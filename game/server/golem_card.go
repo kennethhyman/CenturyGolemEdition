@@ -8,14 +8,14 @@ import (
 
 func MarshallGolemCard(card *models.GolemCard) *pb.GolemCard {
   return &pb.GolemCard{
-    Inputs: MarshallGems(&card.Inputs),
+    Cost: MarshallGems(&card.Inputs),
     Points: int32(card.Points),
   }
 }
 
 func UnmarshallGolemCard(card *pb.GolemCard) *models.GolemCard {
   return &models.GolemCard {
-    Inputs: *UnmarshallGems(card.Inputs),
+    Inputs: *UnmarshallGems(card.Cost),
     Points:  int(card.Points),
   }
 }

@@ -97,6 +97,10 @@ func (d *Deck[_]) Shuffle() {
 	rand.Shuffle(len(d.stack), func(i, j int) { d.stack[i], d.stack[j] = d.stack[j], d.stack[i] })
 }
 
+func (d Deck[_]) Length() int {
+  return len(d.stack)
+}
+
 func (d *Deck[CardType]) DrawCard() (CardType, error) {
 	var empty_card CardType
 	if len(d.stack) <= 0 {

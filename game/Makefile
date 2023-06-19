@@ -7,7 +7,7 @@ all: build_protos build_game
 
 build_game:
 	echo "building game..."
-	go build .
+	go build -o ./bin ./cmd
 
 build_protos:
 	echo "building grpc objects..."
