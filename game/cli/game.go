@@ -1,15 +1,20 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
-	pb "github.com/kennethhyman/CenturyGolemEdition/grpc"
+	tea "github.com/charmbracelet/bubbletea"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+  game_server "github.com/kennethhyman/CenturyGolemEdition/grpc"
+	pb "github.com/kennethhyman/CenturyGolemEdition/grpc"
+  "context"
+  "time"
+
+
 )
 
 type Game struct {
@@ -20,6 +25,21 @@ type Game struct {
   player Player
   silver_coins int
   gold_coins int
+}
+
+func createGame() tea.Msg {
+  client := CreateGameClient()
+
+  ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+  defer cancel()
+
+  msg := &game_server.CreateGameMessage{
+    PlayerCount: 3,
+  }
+
+  game, _ := client.NewGame(ctx, msg)
+
+  return UnmarshallGame(game)
 }
 
 func CreateGameClient() pb.GameClient {
