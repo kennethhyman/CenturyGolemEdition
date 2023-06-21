@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/kennethhyman/CenturyGolemEdition/cli/turns"
+	"github.com/kennethhyman/CenturyGolemEdition/cli/actions"
   "context"
   "time"
 	game_server "github.com/kennethhyman/CenturyGolemEdition/grpc"
@@ -16,7 +16,7 @@ type model struct {
   client *pb.GameClient
 }
 
-var actionsChoices = []Viewable{turns.PlayGemCard, turns.GetGemCard, turns.Rest, turns.GetGolemCard}
+var actionsChoices = []tea.Model{turns.PlayGemCard, turns.GetGemCard, turns.Rest, turns.GetGolemCard}
 
 func InitialModel() model {
   client := CreateGameClient()
@@ -30,7 +30,6 @@ func InitialModel() model {
 
   game, _ := client.NewGame(ctx, msg)
 
-	//views := []turns.TurnView{turns.NewPlayCardView(game), turns.NewGemCardView(game), turns.NewRestView(game), turns.NewGolemCardView(game)}
 	return model {
     game: UnmarshallGame(game),
     client: &client,

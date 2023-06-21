@@ -12,13 +12,9 @@ var selectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 var unfocusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#3C3C3C"))
 var focusedStyle = lipgloss.NewStyle().Bold(true)
 
-type Viewable interface {
-	View() string
-}
-
 type Selector struct {
 	focused  bool
-	options  []Viewable
+	options  []tea.Model
 	selected int
 }
 
@@ -26,7 +22,7 @@ func (s Selector) Init() tea.Cmd {
 	return nil
 }
 
-func (s Selector) selectedOption() Viewable {
+func (s Selector) selectedOption() tea.Model {
 	return s.options[s.selected]
 }
 
