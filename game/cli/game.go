@@ -8,9 +8,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-
-  game_server "github.com/kennethhyman/CenturyGolemEdition/grpc"
-	pb "github.com/kennethhyman/CenturyGolemEdition/grpc"
+  "github.com/kennethhyman/CenturyGolemEdition/internal/core/domain"
+	pb "github.com/kennethhyman/CenturyGolemEdition/internal/core/grpc"
   "context"
   "time"
 
@@ -33,13 +32,13 @@ func createGame() tea.Msg {
   ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
   defer cancel()
 
-  msg := &game_server.CreateGameMessage{
+  msg := &pb.CreateGameMessage{
     PlayerCount: 3,
   }
 
   game, _ := client.NewGame(ctx, msg)
 
-  return UnmarshallGame(game)
+  return domain.UnmarshallGame(game)
 }
 
 func CreateGameClient() pb.GameClient {
@@ -98,25 +97,3 @@ func (g Game) String() string {
   return fmt.Sprintf("%v\n%v\n%v\n\n\n\n%v\n", coins, golem_cards, gem_cards, g.player)
 }
 
-func UnmarshallGame(game *pb.CreateGameResponse) Game {
-  var gem_lineup []GemCard
-  var golem_lineup []GolemCard
-
-  for _, card := range(game.GameState.GemLineup) {
-    gem_lineup = append(gem_lineup, UnmarshallGemCard(card))
-  }
-
-  for _, card := range(game.GameState.GolemLineup) {
-    golem_lineup = append(golem_lineup, UnmarshallGolemCard(card))
-  }
-
-  return Game {
-    gem_lineup: gem_lineup,
-    gem_deck_size: int(game.GameState.GemDeckSize),
-    golem_lineup: golem_lineup,
-    golem_deck_size: int(game.GameState.GolemDeckSize),
-    gold_coins: int(game.GameState.GoldCoins),
-    silver_coins: int(game.GameState.SilverCoins),
-    player: UnmarshallPlayer(game.GameState.Player),
-  }
-}

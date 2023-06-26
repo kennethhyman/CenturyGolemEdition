@@ -1,4 +1,4 @@
-package models
+package domain
 
 import "testing"
 import "github.com/stretchr/testify/assert"

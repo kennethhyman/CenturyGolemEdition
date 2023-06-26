@@ -1,9 +1,10 @@
-package models
+package domain
 
 import (
 	"errors"
   "fmt"
 	"strings"
+  pb "github.com/kennethhyman/CenturyGolemEdition/internal/core/grpc"
 )
 
 var starting_gems = []GemValues{
@@ -173,4 +174,58 @@ func (p Player) String() string {
 	coins := fmt.Sprintf("gold: %v\tsilver: %v", p.GoldCoins, p.SilverCoins)
 
 	return fmt.Sprintf("%v\n%v\n%v\n%v\n", coins, golems, hand, p.Gems.String())
+}
+
+func UnmarshallPlayer(player *pb.Player) *Player {
+  var hand = []GemCard{}
+  var discard = []GemCard{}
+  var golems = []GolemCard{}
+
+  for _, g := range(player.Hand) {
+    hand = append(hand, *UnmarshallGemCard(g))
+  }
+
+  for _, g := range(player.DiscardPile) {
+    discard = append(discard, *UnmarshallGemCard(g))
+  }
+
+  for _, g := range(player.Golems) {
+    golems = append(golems, *UnmarshallGolemCard(g))
+  }
+
+  return &Player{
+    Hand: hand,
+    DiscardPile: discard,
+    Gems: *UnmarshallGems(player.Gems),
+    GoldCoins: int(player.GoldCoins),
+    SilverCoins: int(player.SilverCoins),
+    Golems: golems,
+  }
+}
+
+func MarshallPlayer(player *Player) *pb.Player {
+  var golems []*pb.GolemCard
+  var hand []*pb.GemCard
+  var discards []*pb.GemCard
+
+  for _, card := range(player.Hand) {
+    hand = append(hand, MarshallGemCard(&card))
+  }
+
+  for _, card := range(player.Golems) {
+    golems = append(golems, MarshallGolemCard(&card))
+  }
+
+  for _, card := range(player.DiscardPile) {
+    discards = append(discards, MarshallGemCard(&card))
+  }
+
+  return &pb.Player{
+    GoldCoins: int32(player.GoldCoins),
+    SilverCoins: int32(player.SilverCoins),
+    Gems: MarshallGems(&player.Gems),
+    Golems: golems,
+    Hand: hand,
+    DiscardPile: discards,
+  }
 }

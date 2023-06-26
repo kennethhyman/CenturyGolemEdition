@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	pb "github.com/kennethhyman/CenturyGolemEdition/grpc"
+	pb "github.com/kennethhyman/CenturyGolemEdition/internal/core/grpc"
 )
 
 const yellowString = "\033[1;33m○\033[0m"
