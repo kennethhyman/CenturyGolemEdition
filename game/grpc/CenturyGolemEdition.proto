@@ -69,8 +69,8 @@ message CreateGameResponse {
   GameState game_state = 1;
 }
 
-message GameState { 
-  repeated Player players = 1;
+message GameState{ 
+  repeated Player other_players = 1;
   repeated GemCard gem_lineup = 2;
   int32 gem_deck_size = 3;
   repeated GolemCard golem_lineup = 4;
@@ -78,6 +78,7 @@ message GameState {
   repeated GemValues player_gems = 6;
   int32 gold_coins = 7;
   int32 silver_coins = 8;
+  Player player = 9;
 }
 
 message PlayGemCardMessage {

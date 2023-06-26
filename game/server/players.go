@@ -31,3 +31,30 @@ func UnmarshallPlayer(player *pb.Player) *models.Player {
     Golems: golems,
   }
 }
+
+func MarshallPlayer(player *models.Player) *pb.Player {
+  var golems []*pb.GolemCard
+  var hand []*pb.GemCard
+  var discards []*pb.GemCard
+
+  for _, card := range(player.Hand) {
+    hand = append(hand, MarshallGemCard(&card))
+  }
+
+  for _, card := range(player.Golems) {
+    golems = append(golems, MarshallGolemCard(&card))
+  }
+
+  for _, card := range(player.DiscardPile) {
+    discards = append(discards, MarshallGemCard(&card))
+  }
+
+  return &pb.Player{
+    GoldCoins: int32(player.GoldCoins),
+    SilverCoins: int32(player.SilverCoins),
+    Gems: MarshallGems(&player.Gems),
+    Golems: golems,
+    Hand: hand,
+    DiscardPile: discards,
+  }
+}

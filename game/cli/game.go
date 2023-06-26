@@ -95,7 +95,7 @@ func (g Game) String() string {
     gem_cards += card_string + padding
   }
 
-  return fmt.Sprintf("%v\n%v\n%v\n\n\n", coins, golem_cards, gem_cards)
+  return fmt.Sprintf("%v\n%v\n%v\n\n\n\n%v\n", coins, golem_cards, gem_cards, g.player)
 }
 
 func UnmarshallGame(game *pb.CreateGameResponse) Game {
@@ -117,5 +117,6 @@ func UnmarshallGame(game *pb.CreateGameResponse) Game {
     golem_deck_size: int(game.GameState.GolemDeckSize),
     gold_coins: int(game.GameState.GoldCoins),
     silver_coins: int(game.GameState.SilverCoins),
+    player: UnmarshallPlayer(game.GameState.Player),
   }
 }
