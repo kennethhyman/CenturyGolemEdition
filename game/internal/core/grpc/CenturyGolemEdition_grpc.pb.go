@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.12.4
-// source: grpc/CenturyGolemEdition.proto
+// source: internal/core/grpc/CenturyGolemEdition.proto
 
-package game_server
+package grpc
 
 import (
 	context "context"
@@ -43,7 +43,7 @@ func NewGameClient(cc grpc.ClientConnInterface) GameClient {
 
 func (c *gameClient) GetCard(ctx context.Context, in *GetCardMessage, opts ...grpc.CallOption) (*GemCard, error) {
 	out := new(GemCard)
-	err := c.cc.Invoke(ctx, "/game_server.Game/GetCard", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.Game/GetCard", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (c *gameClient) GetCard(ctx context.Context, in *GetCardMessage, opts ...gr
 
 func (c *gameClient) NewGame(ctx context.Context, in *CreateGameMessage, opts ...grpc.CallOption) (*CreateGameResponse, error) {
 	out := new(CreateGameResponse)
-	err := c.cc.Invoke(ctx, "/game_server.Game/NewGame", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.Game/NewGame", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (c *gameClient) NewGame(ctx context.Context, in *CreateGameMessage, opts ..
 
 func (c *gameClient) PlayGemCard(ctx context.Context, in *PlayGemCardMessage, opts ...grpc.CallOption) (*PlayGemCardResponse, error) {
 	out := new(PlayGemCardResponse)
-	err := c.cc.Invoke(ctx, "/game_server.Game/PlayGemCard", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpc.Game/PlayGemCard", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func _Game_GetCard_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/game_server.Game/GetCard",
+		FullMethod: "/grpc.Game/GetCard",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GameServer).GetCard(ctx, req.(*GetCardMessage))
@@ -138,7 +138,7 @@ func _Game_NewGame_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/game_server.Game/NewGame",
+		FullMethod: "/grpc.Game/NewGame",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GameServer).NewGame(ctx, req.(*CreateGameMessage))
@@ -156,7 +156,7 @@ func _Game_PlayGemCard_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/game_server.Game/PlayGemCard",
+		FullMethod: "/grpc.Game/PlayGemCard",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GameServer).PlayGemCard(ctx, req.(*PlayGemCardMessage))
@@ -168,7 +168,7 @@ func _Game_PlayGemCard_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Game_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "game_server.Game",
+	ServiceName: "grpc.Game",
 	HandlerType: (*GameServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -185,5 +185,5 @@ var Game_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "grpc/CenturyGolemEdition.proto",
+	Metadata: "internal/core/grpc/CenturyGolemEdition.proto",
 }

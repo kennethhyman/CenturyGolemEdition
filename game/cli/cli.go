@@ -19,7 +19,7 @@ func InitialModel() model {
 }
 
 func (m model) Init() tea.Cmd {
-	return createGame
+	return nil //createGame
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

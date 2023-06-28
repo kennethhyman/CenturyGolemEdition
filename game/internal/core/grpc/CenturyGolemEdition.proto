@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-option go_package = "khyman.dev/grpc/century-golem/game-server";
+option go_package = "khyman.dev/grpc/century-golem/grpc";
 option java_package = "dev.khyman.grpc.century-golem.game";
 option java_outer_classname = "CenturyGolemProto";
 
 
-package game_server;
+package grpc;
 
 // Interface exported by the server.
 service Game {
