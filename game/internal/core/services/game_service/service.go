@@ -36,6 +36,37 @@ func (srv *Service) Create(players int) (domain.Game, error) {
   return game, nil
 }
 
+func (srv *Service) PlayGemCard(id string, player int, card domain.GemCard, discards domain.GemValues) (domain.Game, error) {
+  game, err := srv.Get(id)
+  if err != nil {
+    return game, err
+  }
+
+  err = game.PlayGemCard(card, discards)
+  if err != nil {
+    return game, err
+  }
+
+  err = srv.gamesRepository.Save(game)
+  if err != nil {
+    return game, err
+  }
+
+  return game, nil
+}
+
+func (srv *Service) GetGemCard(id string, player int, card domain.GemCard, payment string) (domain.Game, error) {
+	return domain.Game{}, nil
+}
+
+func (srv *Service) GetGolemCard(id string, player int, golem domain.GolemCard) (domain.Game, error) {
+	return domain.Game{}, nil
+}
+
+func (srv *Service) Rest(id string, player int) (domain.Game, error) {
+	return domain.Game{}, nil
+}
+
 func GetUID() string {
   return uuid.NewString()
 }
