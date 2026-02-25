@@ -12,8 +12,8 @@ type Service struct{
   gamesRepository ports.GameRepository
 }
 
-func New() *Service {
-  return &Service{}
+func New(repo ports.GameRepository) *Service {
+  return &Service{gamesRepository: repo}
 }
 
 func (srv *Service) Get(id string) (domain.Game, error) {

@@ -12,7 +12,7 @@ type GameRepository interface {
 type GameService interface {
   Create(players int) (domain.Game, error)
   Get(id string) (domain.Game, error)
-  PlayGemCard(id string, player int, card domain.GemCard) (domain.Game, error)
+  PlayGemCard(id string, player int, card domain.GemCard, discards domain.GemValues) (domain.Game, error)
   GetGemCard(id string, player int, card domain.GemCard, payment string) (domain.Game, error)
   GetGolemCard(id string, player int, golem domain.GolemCard) (domain.Game, error)
   Rest(id string, player int) (domain.Game, error)
