@@ -7,6 +7,7 @@ all: tidy vet build_protos build_game test_game
 
 build_game:
 	echo "building game..."
+	mkdir -p ./bin
 	go build -o ./bin ./cmd/...
 
 build_protos:

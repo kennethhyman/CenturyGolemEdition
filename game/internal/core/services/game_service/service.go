@@ -12,8 +12,13 @@ type Service struct{
   gamesRepository ports.GameRepository
 }
 
-func New() *Service {
-  return &Service{}
+// New builds a Service backed by gamesRepository.
+//
+// Pre: gamesRepository is non-nil — which repository implementation (sqlite
+// today, e.g. Postgres later) is the composition root's (cmd/server's)
+// decision, never this package's.
+func New(gamesRepository ports.GameRepository) *Service {
+  return &Service{gamesRepository: gamesRepository}
 }
 
 func (srv *Service) Get(id string) (domain.Game, error) {
