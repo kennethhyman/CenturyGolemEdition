@@ -168,10 +168,35 @@ confirm the write actually landed in sqlite (not just in memory).
 
 ## Stage 3 — CLI connectivity
 
-Owner: `cmd/cli` + `game/cli` package. Depends on Stage 2 existing — don't
+Owner: `cmd/cli` + `game/cli` package, plus the server-side gaps below that
+block this stage's own success criteria. Depends on Stage 2 existing — don't
 start wiring a client to an endpoint that doesn't do anything yet.
 
+Decision locked (don't revisit without a reason): the `.proto` only declares
+`GetCard`/`NewGame`/`PlayGemCard`, has no RPC at all for buying a golem or
+resting, and `GetCardMessage`/`PlayGemCardMessage` type `game_id` as `int32`
+even though real game IDs are UUID strings (`game_service.GetUID`). Confirmed
+before this stage started, not left for research to rediscover. Expand the
+proto now rather than narrowing this stage's scope — "play a full turn" only
+means something if golem-buying and resting actually round-trip too.
+
 Tasks:
+- [ ] Fix `game_id` to `string` in `GetCardMessage` and `PlayGemCardMessage`,
+      and add RPCs + messages for buying a golem and resting (mirror the
+      existing `PlayGemCard`/`PlayGemCardResponse` shape: request carries
+      `game_id` + whatever the action needs, response carries `GameState`).
+      Regenerate via `make build_protos`.
+- [ ] Implement the remaining `ports.GameService` methods on
+      `game_service.Service` — `PlayGemCard`, `GetGemCard`, `GetGolemCard`,
+      `Rest` (currently only `Create`/`Get` exist) — translating to the
+      matching `domain.Game` methods (`PlayGemCard`, `GetGemCard`, `BuyGolem`,
+      `NextTurn`). This is the same mechanical service-method-plus-adapter
+      pattern Stage 2 already established for `Create`/`NewGame`, not a new
+      design — but if something about it doesn't fit that pattern cleanly,
+      stop and report rather than forcing it.
+- [ ] Wire those into `internal/adapters/grpc` (`grpcadapter.GameServer`) —
+      replace the `Unimplemented` `GetCard`/`PlayGemCard` stubs and add the
+      new golem/rest RPCs' handlers.
 - [ ] Add networking from the CLI to a running server over grpc (currently
       missing/commented out — CLI runs entirely against local/offline logic).
 - [ ] Support pointing the CLI at either a local server or a deployed one
@@ -184,14 +209,15 @@ Tasks:
 - [ ] Extract the `fmt.Scan`/`fmt.Scanln` terminal-I/O prompts currently
       living in `internal/core/domain/game.go` (`GetGemCard`, `BuyGolem`,
       `NextTurn`) out of the domain layer and into the CLI. Flagged during
-      Stage 2 (see that stage's task list) rather than done there: Stage 2
-      didn't need to touch `game.go`, and once the CLI actually talks to a
-      running server (this stage's whole point), those domain methods either
-      stop being the CLI's code path entirely or need their I/O and their
-      game-state mutation pulled apart so the state-mutation half can run
-      server-side while the prompt-for-input half stays client-side. Also
-      resolves the errcheck lint findings on those unchecked `fmt.Scan*`
-      calls (see Stage 1's note).
+      Stage 2 as a cleanup item, but it's stronger than that now: the new
+      `game_service.Service` methods above (`PlayGemCard`/`GetGemCard`/
+      `GetGolemCard`/`Rest`) run *server-side*, and a server process can't
+      block on stdin to prompt a remote client for input — so these domain
+      methods' I/O and state-mutation halves must be pulled apart for the
+      new service methods to be implementable at all, not just for lint
+      cleanliness. Do this before or alongside the service-method task above,
+      whichever order actually works out. Also resolves the errcheck lint
+      findings on those unchecked `fmt.Scan*` calls (see Stage 1's note).
 
 **Success criteria:**
 ```
