@@ -151,3 +151,30 @@ speculatively build interfaces for it now.
 4. Never touch Stage 4 without being explicitly told to.
 5. Update this file's checkboxes in the same commit/change that satisfies
    them.
+
+## Per-stage agent protocol (research -> code -> verify -> next)
+
+One agent per stage, run in this sequence, from the `ai-behaviors` framework
+(`#=research` = `#epistemic #legible #concise`; `#=code` = `#contract #name
+#checklist #scope #legible #concise`):
+
+1. **`#research`** — investigate only what this stage's task list needs to
+   execute the decisions already recorded in that stage's section (e.g.
+   Stage 2's sqlite/JSON-blob/composition-root calls are made; research is
+   implementation detail, not re-litigating them). Every claim sourced and
+   confidence-labeled. If research surfaces a real unresolved fork — not
+   covered by an existing decision in this file — STOP and report the
+   options. Do not pick one and continue; that is `#epistemic`'s HARD
+   CONSTRAINT, not a style preference.
+2. **`#code`** — only after research completes without an unresolved fork.
+   The stage's task checklist above is the `#checklist` reference artifact:
+   every item gets done/blocked (deferred requires explicit user
+   confirmation, which an unattended agent cannot obtain — so an unattended
+   agent that wants to defer an item must STOP and report instead, same as a
+   research fork). Update this file's checkboxes for whatever gets done.
+3. **Verify** — the orchestrator (not the stage agent's self-report) runs
+   that stage's exact success-criteria commands. Passing them is what
+   "requirements met" means; nothing else qualifies.
+4. Only on a clean verify does the next stage's agent get started, same
+   sequence. A stop-and-report from step 1 or 2 ends the run — it is not a
+   failure to route around, it's the plan asking a real question.
