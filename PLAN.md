@@ -79,34 +79,92 @@ Decisions already made (don't revisit without a reason):
   `game_service.Service`.
 
 Tasks:
-- [ ] Implement `ports.GameRepository` against sqlite in a new
+- [x] Implement `ports.GameRepository` against sqlite in a new
       `internal/adapters/sqlite` (or similar) package, with its own tests.
-- [ ] Fill in `internal/core/grpc/adapters.go` — currently just `package grpc`
+      Done: `internal/adapters/sqlite/repository.go`, driver
+      `modernc.org/sqlite` (pure Go, no CGO), single `games(id TEXT PRIMARY
+      KEY, data TEXT)` table, JSON blob per row. Tests in
+      `internal/adapters/sqlite/repository_test.go` (save/get round trip,
+      not-found, overwrite, reopen-persists, empty-ID rejected).
+      **Implementation note surfaced during this work**: `domain.LineUp`'s
+      `deck *Deck[CardType]` field is unexported, so a plain
+      `encoding/json.Marshal(domain.Game{...})` silently drops every card
+      still left to draw — `Remaining()`/`Draw()`/`String()` would then
+      nil-pointer-panic on anything loaded back from storage. Fixed with
+      `MarshalJSON`/`UnmarshalJSON` on `LineUp` (`internal/core/domain/lineup.go`)
+      that include the deck's remaining cards; `domain.Game`/`Player` needed
+      no such fix since all their fields are already exported. This is a
+      mechanical fix (no public API change), not a redesign of domain/ports.
+- [x] Fill in `internal/core/grpc/adapters.go` — currently just `package grpc`
       with no handlers — to translate grpc requests to `game_service.Service`
       calls and back (there's already `domain.MarshallGame` /
       `MarshallGemCard` / `MarshallGolemCard` to build on).
-- [ ] `game_service.Service.New()` currently takes no arguments and leaves
+      **Structural note**: the implementation does not live in that file.
+      `internal/core/domain` already imports `internal/core/grpc` (as `pb`,
+      for `MarshallGame` et al.), so a `GameServer` implementation calling
+      `domain.MarshallGame` from *inside* `internal/core/grpc` would close an
+      import cycle (`grpc -> domain -> grpc`) — not a style choice, Go
+      rejects this outright. The real implementation is the new
+      `internal/adapters/grpc` package (`grpcadapter.GameServer`), which
+      depends one-way on both `internal/core/grpc` and `internal/core/domain`;
+      `internal/core/grpc/adapters.go` now just documents this and points
+      there. Of the 3 RPCs the generated `pb.GameServer` interface declares
+      (`NewGame`, `GetCard`, `PlayGemCard`), only `NewGame` is implemented —
+      it's the only one with a corresponding `game_service.Service` method
+      (`Create`) to translate to. `GetCard`/`PlayGemCard` are left
+      `Unimplemented` (via the generated `UnimplementedGameServer` default):
+      `GetCardMessage.game_id` is `int32` while domain game IDs are UUID
+      strings and `GetCard` returns a single `GemCard` that no service method
+      produces; `PlayGemCardMessage` carries no player index and
+      `game_service.Service` has no `PlayGemCard` method yet (task below only
+      asked to change `New()`'s signature, not add the other
+      `ports.GameService` methods). Wiring these up is follow-on work once
+      `game_service.Service` grows the matching methods.
+- [x] `game_service.Service.New()` currently takes no arguments and leaves
       `gamesRepository` nil — change it to accept a `ports.GameRepository`,
-      injected by the caller.
-- [ ] Wire `cmd/server/server.go` (currently a stub `fmt.Printf`, real startup
+      injected by the caller. Done — `New(gamesRepository ports.GameRepository) *Service`.
+- [x] Wire `cmd/server/server.go` (currently a stub `fmt.Printf`, real startup
       commented out) to construct the sqlite repository, the service, the
-      grpc adapter, and actually start listening on 50051.
+      grpc adapter, and actually start listening on 50051. Done — `-addr`/
+      `-db` flags (env `GAME_SERVER_ADDR`/`GAME_SERVER_DB`), default
+      `:50051` / `games.db`. Composition logic factored into `build(addr,
+      dbPath)` so `cmd/server/server_test.go` can drive a real
+      `grpc.Server`/`net.Listener` in-process without forking `main`.
 - [ ] Address the errcheck/lint findings in `internal/core/domain/game.go` in
       this stage if touching that I/O — but note `fmt.Scan`/`fmt.Scanln`
       calls living directly in the domain layer are themselves a scope smell
       (terminal I/O belongs to the CLI, not the domain). If a full fix here
       turns into extracting that I/O, that's Stage 2's job, not Stage 1's.
+      **Not touched in Stage 2**: none of tasks 1-4 above required editing
+      `game.go`'s I/O, so per this task's own contingency clause this was
+      left alone rather than done as a standalone pass. The extraction (move
+      `fmt.Scan`/`Scanln` prompts out of the domain layer into the CLI) is
+      flagged below under Stage 3, which is where the CLI-side of that
+      boundary actually gets rewritten.
+
+Build-tooling fix made in passing: `make build_game`/`make all`/`make
+run_server` failed on a truly clean checkout (no pre-existing `bin/`) with
+`go: cannot write multiple packages to non-directory ./bin` — `go build -o`
+into multiple main packages (`cmd/cli` + `cmd/server`) requires the target to
+already exist as a directory. Pre-existing bug (both `cmd/` packages predate
+Stage 2), not introduced here, but it blocked Stage 2's own `make
+run_server` success criterion, so fixed with a one-line `mkdir -p ./bin` in
+`build_game` rather than deferred back to Stage 1.
 
 **Success criteria (all must pass):**
 ```
 cd game && go test ./internal/adapters/... -v          # repository tests pass
 cd game && make run_server &                            # server starts, stays up
-grpcurl -plaintext localhost:50051 list                 # (or equivalent) shows the service
 # a CreateGame call round-trips through grpc -> service -> sqlite -> back
 ```
-(Exact smoke-test tooling TBD when this stage starts — the bar is "a real
-grpc client can create and fetch a game against a running local server
-backed by sqlite," proven by an automated test, not manual poking.)
+Smoke-test tooling used: `grpcurl` isn't installed in this environment, so the
+round trip is proven by `cd game && go test ./cmd/server/... -v`
+(`TestCreateGameRoundTripsOverGRPC` in `cmd/server/server_test.go`), which
+starts the real composition root on a real `net.Listener` and drives it with
+a real `google.golang.org/grpc` client — plus a manual confirmation in this
+run: `./bin/server` was started as its own process, hit over TCP by a
+separate `go run` client process, and `games.db` was inspected afterward to
+confirm the write actually landed in sqlite (not just in memory).
 
 ## Stage 3 — CLI connectivity
 
@@ -123,6 +181,17 @@ Tasks:
       rewiring these files for real network calls — don't do this as a
       separate pass; it's only cheap to fix now because you're already
       rewriting the file for the connectivity change.
+- [ ] Extract the `fmt.Scan`/`fmt.Scanln` terminal-I/O prompts currently
+      living in `internal/core/domain/game.go` (`GetGemCard`, `BuyGolem`,
+      `NextTurn`) out of the domain layer and into the CLI. Flagged during
+      Stage 2 (see that stage's task list) rather than done there: Stage 2
+      didn't need to touch `game.go`, and once the CLI actually talks to a
+      running server (this stage's whole point), those domain methods either
+      stop being the CLI's code path entirely or need their I/O and their
+      game-state mutation pulled apart so the state-mutation half can run
+      server-side while the prompt-for-input half stays client-side. Also
+      resolves the errcheck lint findings on those unchecked `fmt.Scan*`
+      calls (see Stage 1's note).
 
 **Success criteria:**
 ```

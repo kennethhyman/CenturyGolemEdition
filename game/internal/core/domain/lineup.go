@@ -3,6 +3,7 @@ package domain
 import "errors"
 import "strings"
 import "fmt"
+import "encoding/json"
 
 type card interface {
 	String() string
@@ -12,6 +13,43 @@ type card interface {
 type LineUp[CardType card] struct {
 	Stack []CardType
 	deck  *Deck[CardType] // the supplying deck
+}
+
+// lineupJSON is LineUp's JSON wire shape. It exists because LineUp's `deck`
+// field is unexported: encoding/json silently skips unexported fields, so
+// marshalling a LineUp directly would drop every card still left to draw.
+// That matters for persistence (Stage 2 stores domain.Game as a JSON blob)
+// where a round-tripped LineUp must still support Draw/Remaining/String
+// exactly like a freshly built one.
+type lineupJSON[CardType card] struct {
+	Stack []CardType
+	Deck  []CardType
+}
+
+// MarshalJSON encodes both the face-up Stack and the supplying deck's
+// remaining cards.
+func (l LineUp[CardType]) MarshalJSON() ([]byte, error) {
+	var deckCards []CardType
+	if l.deck != nil {
+		deckCards = l.deck.stack
+	}
+
+	return json.Marshal(lineupJSON[CardType]{Stack: l.Stack, Deck: deckCards})
+}
+
+// UnmarshalJSON is MarshalJSON's inverse.
+//
+// Post: l.deck is non-nil, so Remaining/Draw/String behave the same as on a
+// LineUp built via NewGemLineUp/NewGolemLinup.
+func (l *LineUp[CardType]) UnmarshalJSON(data []byte) error {
+	var aux lineupJSON[CardType]
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	l.Stack = aux.Stack
+	l.deck = &Deck[CardType]{stack: aux.Deck}
+	return nil
 }
 
 func NewGemLineUp() LineUp[GemCard] {
