@@ -1,6 +1,6 @@
 module github.com/kennethhyman/CenturyGolemEdition
 
-go 1.24
+go 1.27.0
 
 require (
 	github.com/charmbracelet/bubbles v0.11.0

@@ -26,13 +26,26 @@ Owner: build tooling (`go.mod`, `Makefile`, CI), not application code.
       turns` under `cli/actions/`, a leftover from an incomplete rename —
       fixed)
 - [x] `go.mod`'s `go` directive matches the installed toolchain (was `1.18`,
-      installed toolchain is 1.24.x — bumped to `go 1.24`)
-- [ ] `golangci-lint run ./...` is clean — **not required yet**. Current
-      findings (unchecked errors from `fmt.Scan*` in
+      bumped to `1.24`, then to `1.27.0` — the current latest Go release.
+      `go build`/`go test`/etc. auto-download the matching toolchain via
+      `GOTOOLCHAIN=auto`; no system-wide Go reinstall needed or done — that's
+      a machine-level concern shared by every project here, not this repo's
+      to own. Local `golangci-lint` had to be rebuilt with
+      `GOTOOLCHAIN=go1.27.0 go install .../golangci-lint@latest` to match.
+- [ ] `golangci-lint run ./...` is clean — **not required yet, and currently
+      can't run at all**. As of go 1.27, golangci-lint's latest release
+      (v1.64.8) can't parse this toolchain's export data format
+      ("export data version 4 is greater than maximum supported version 2")
+      and crashes with exit 3, independent of any real findings. This is an
+      upstream tooling gap, not a repo issue — don't try to work around it
+      (e.g. by downgrading the go directive). CI's lint job has
+      `continue-on-error: true` for this reason; revisit once golangci-lint
+      ships go1.27 support and re-verify locally first. Underneath that,
+      the original pre-existing findings (unchecked errors from `fmt.Scan*` in
       `internal/core/domain/game.go`, unused fields/vars in `cli/game.go`,
-      `cli/player.go`, `cli/actions/turnView.go`, `cli/cli.go`) live in files
-      Stage 2 and Stage 3 substantially rework. Fix them as part of the stage
-      that touches that file, not as a standalone cleanup pass — don't let an
+      `cli/player.go`, `cli/actions/turnView.go`, `cli/cli.go`) still live in
+      files Stage 2 and Stage 3 substantially rework. Fix them as part of the
+      stage that touches that file, not as a standalone cleanup pass — don't let an
       agent "clean up" these files outside their owning stage. CI runs lint
       non-blocking (`--issues-exit-code=0`) so findings are visible without
       gating merges on debt this plan already knows about.
