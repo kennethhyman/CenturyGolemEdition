@@ -143,12 +143,18 @@ func (p *Player) AddGolemCard(card GolemCard) {
 	p.Golems = append(p.Golems, card)
 }
 
+// CanAfford reports whether p holds enough of every gem color card.Cost()
+// requires. (Pre-existing bug fixed here: this used to OR the four color
+// comparisons together, so holding enough of any single color — even zero
+// of the others — could satisfy it. Buying a golem is only correctly
+// rejected for being unaffordable if every color check fails, so this must
+// be AND.)
 func (p Player) CanAfford(card card) bool {
 	player_gems := p.Gems
 	cost := card.Cost()
 
-	return player_gems.Yellow >= cost.Yellow || player_gems.Green >= cost.Green ||
-		player_gems.Blue >= cost.Blue || player_gems.Pink > cost.Pink
+	return player_gems.Yellow >= cost.Yellow && player_gems.Green >= cost.Green &&
+		player_gems.Blue >= cost.Blue && player_gems.Pink >= cost.Pink
 }
 
 func (p Player) CardString() string {

@@ -22,15 +22,14 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GameClient interface {
-	// A simple RPC.
-	//
-	// Obtains the feature at a given position.
-	//
-	// A feature with an empty name is returned if there's no feature at the given
-	// position.
-	GetCard(ctx context.Context, in *GetCardMessage, opts ...grpc.CallOption) (*GemCard, error)
+	// Pick up a gem card from the lineup (paying one gem per card bypassed).
+	GetCard(ctx context.Context, in *GetCardMessage, opts ...grpc.CallOption) (*GetCardResponse, error)
 	NewGame(ctx context.Context, in *CreateGameMessage, opts ...grpc.CallOption) (*CreateGameResponse, error)
 	PlayGemCard(ctx context.Context, in *PlayGemCardMessage, opts ...grpc.CallOption) (*PlayGemCardResponse, error)
+	// Buy a golem card from the lineup.
+	BuyGolem(ctx context.Context, in *BuyGolemMessage, opts ...grpc.CallOption) (*BuyGolemResponse, error)
+	// End the current player's turn, discarding down to 10 gems if required.
+	Rest(ctx context.Context, in *RestMessage, opts ...grpc.CallOption) (*RestResponse, error)
 }
 
 type gameClient struct {
@@ -41,8 +40,8 @@ func NewGameClient(cc grpc.ClientConnInterface) GameClient {
 	return &gameClient{cc}
 }
 
-func (c *gameClient) GetCard(ctx context.Context, in *GetCardMessage, opts ...grpc.CallOption) (*GemCard, error) {
-	out := new(GemCard)
+func (c *gameClient) GetCard(ctx context.Context, in *GetCardMessage, opts ...grpc.CallOption) (*GetCardResponse, error) {
+	out := new(GetCardResponse)
 	err := c.cc.Invoke(ctx, "/grpc.Game/GetCard", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -68,19 +67,36 @@ func (c *gameClient) PlayGemCard(ctx context.Context, in *PlayGemCardMessage, op
 	return out, nil
 }
 
+func (c *gameClient) BuyGolem(ctx context.Context, in *BuyGolemMessage, opts ...grpc.CallOption) (*BuyGolemResponse, error) {
+	out := new(BuyGolemResponse)
+	err := c.cc.Invoke(ctx, "/grpc.Game/BuyGolem", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *gameClient) Rest(ctx context.Context, in *RestMessage, opts ...grpc.CallOption) (*RestResponse, error) {
+	out := new(RestResponse)
+	err := c.cc.Invoke(ctx, "/grpc.Game/Rest", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GameServer is the server API for Game service.
 // All implementations must embed UnimplementedGameServer
 // for forward compatibility
 type GameServer interface {
-	// A simple RPC.
-	//
-	// Obtains the feature at a given position.
-	//
-	// A feature with an empty name is returned if there's no feature at the given
-	// position.
-	GetCard(context.Context, *GetCardMessage) (*GemCard, error)
+	// Pick up a gem card from the lineup (paying one gem per card bypassed).
+	GetCard(context.Context, *GetCardMessage) (*GetCardResponse, error)
 	NewGame(context.Context, *CreateGameMessage) (*CreateGameResponse, error)
 	PlayGemCard(context.Context, *PlayGemCardMessage) (*PlayGemCardResponse, error)
+	// Buy a golem card from the lineup.
+	BuyGolem(context.Context, *BuyGolemMessage) (*BuyGolemResponse, error)
+	// End the current player's turn, discarding down to 10 gems if required.
+	Rest(context.Context, *RestMessage) (*RestResponse, error)
 	mustEmbedUnimplementedGameServer()
 }
 
@@ -88,7 +104,7 @@ type GameServer interface {
 type UnimplementedGameServer struct {
 }
 
-func (UnimplementedGameServer) GetCard(context.Context, *GetCardMessage) (*GemCard, error) {
+func (UnimplementedGameServer) GetCard(context.Context, *GetCardMessage) (*GetCardResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCard not implemented")
 }
 func (UnimplementedGameServer) NewGame(context.Context, *CreateGameMessage) (*CreateGameResponse, error) {
@@ -96,6 +112,12 @@ func (UnimplementedGameServer) NewGame(context.Context, *CreateGameMessage) (*Cr
 }
 func (UnimplementedGameServer) PlayGemCard(context.Context, *PlayGemCardMessage) (*PlayGemCardResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PlayGemCard not implemented")
+}
+func (UnimplementedGameServer) BuyGolem(context.Context, *BuyGolemMessage) (*BuyGolemResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BuyGolem not implemented")
+}
+func (UnimplementedGameServer) Rest(context.Context, *RestMessage) (*RestResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Rest not implemented")
 }
 func (UnimplementedGameServer) mustEmbedUnimplementedGameServer() {}
 
@@ -164,6 +186,42 @@ func _Game_PlayGemCard_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Game_BuyGolem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BuyGolemMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GameServer).BuyGolem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.Game/BuyGolem",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GameServer).BuyGolem(ctx, req.(*BuyGolemMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Game_Rest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GameServer).Rest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpc.Game/Rest",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GameServer).Rest(ctx, req.(*RestMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Game_ServiceDesc is the grpc.ServiceDesc for Game service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -182,6 +240,14 @@ var Game_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PlayGemCard",
 			Handler:    _Game_PlayGemCard_Handler,
+		},
+		{
+			MethodName: "BuyGolem",
+			Handler:    _Game_BuyGolem_Handler,
+		},
+		{
+			MethodName: "Rest",
+			Handler:    _Game_Rest_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

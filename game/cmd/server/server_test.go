@@ -69,6 +69,9 @@ func TestCreateGameRoundTripsOverGRPC(t *testing.T) {
 	if state.GetPlayer() == nil {
 		t.Error("GameState.Player is nil")
 	}
+	if state.GetGameId() == "" {
+		t.Error("GameState.GameId is empty — client has no way to make follow-up calls")
+	}
 
 	select {
 	case err := <-serveErr:

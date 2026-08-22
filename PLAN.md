@@ -181,12 +181,29 @@ proto now rather than narrowing this stage's scope — "play a full turn" only
 means something if golem-buying and resting actually round-trip too.
 
 Tasks:
-- [ ] Fix `game_id` to `string` in `GetCardMessage` and `PlayGemCardMessage`,
+- [x] Fix `game_id` to `string` in `GetCardMessage` and `PlayGemCardMessage`,
       and add RPCs + messages for buying a golem and resting (mirror the
       existing `PlayGemCard`/`PlayGemCardResponse` shape: request carries
       `game_id` + whatever the action needs, response carries `GameState`).
       Regenerate via `make build_protos`.
-- [ ] Implement the remaining `ports.GameService` methods on
+      Done, plus two additions research surfaced as load-bearing (not
+      optional polish) rather than scope creep:
+      - `GameState` gained `game_id` and `current_player` fields. Without
+        `game_id` a client can never learn a newly created game's ID — the
+        old `CreateGameResponse` only carried `GameState`, which had no ID
+        field anywhere, so no follow-up call was ever possible. Without
+        `current_player`, a client has no way to know which player index
+        to pass back on its next request (this game is pass-and-play/
+        hotseat: one client drives whichever player is up, there's no
+        per-connection player identity).
+      - `GetCard`'s response changed from a bare `GemCard` to a
+        `GetCardResponse{GameState}`, matching the other RPCs — the old
+        shape couldn't carry enough information back for a client to keep
+        playing (no updated lineup/hand/turn state).
+      RPCs added: `BuyGolem(BuyGolemMessage) -> BuyGolemResponse` and
+      `Rest(RestMessage) -> RestResponse`, both `{game_id, player, ...}` /
+      `{GameState}` shaped per the mirror instruction.
+- [x] Implement the remaining `ports.GameService` methods on
       `game_service.Service` — `PlayGemCard`, `GetGemCard`, `GetGolemCard`,
       `Rest` (currently only `Create`/`Get` exist) — translating to the
       matching `domain.Game` methods (`PlayGemCard`, `GetGemCard`, `BuyGolem`,
@@ -194,19 +211,76 @@ Tasks:
       pattern Stage 2 already established for `Create`/`NewGame`, not a new
       design — but if something about it doesn't fit that pattern cleanly,
       stop and report rather than forcing it.
-- [ ] Wire those into `internal/adapters/grpc` (`grpcadapter.GameServer`) —
+      Done (`internal/core/services/game_service/service.go`). One method
+      genuinely didn't fit the given `ports.GameService` signature as
+      written, handled as a disclosed mechanical extension rather than a
+      silent redesign or a full stop: `Rest(id string, player int)` had no
+      way to carry a discard choice, but the domain rule it wraps
+      (`NextTurn`) requires one whenever the current player holds more
+      than 10 gems — with the original signature, `Rest` could never
+      succeed once a player crossed that line, for any caller, ever.
+      Extended it to `Rest(id string, player int, discards string)`,
+      reusing `GetGemCard`'s existing `payment string` (gem-letter)
+      convention rather than inventing a new shape. `PlayGemCard` was left
+      exactly as declared (`id, player, card`, no discard) since real
+      Century Golem rules put discard-to-limit at end-of-turn (`Rest`),
+      not mid-play — so the missing parameter there is correct, not a gap.
+      Every method validates `player == game.CurrentPlayer` before
+      mutating (via a shared `loadForPlayer` helper) — the interface
+      passes `player` but nothing previously used it, which would have let
+      a stale/wrong-turn caller silently mutate whichever player happened
+      to be current instead of being rejected.
+- [x] Wire those into `internal/adapters/grpc` (`grpcadapter.GameServer`) —
       replace the `Unimplemented` `GetCard`/`PlayGemCard` stubs and add the
       new golem/rest RPCs' handlers.
-- [ ] Add networking from the CLI to a running server over grpc (currently
+      Done (`internal/adapters/grpc/game_server.go`). Domain/service
+      errors surface as `codes.FailedPrecondition` (e.g. "can't afford
+      this golem", "not your turn"); a missing `game_id` is
+      `codes.InvalidArgument`.
+- [x] Add networking from the CLI to a running server over grpc (currently
       missing/commented out — CLI runs entirely against local/offline logic).
-- [ ] Support pointing the CLI at either a local server or a deployed one
+      Done (`cli/game.go`): `createGame`/`playGemCard`/`getGemCard`/
+      `buyGolem`/`rest` are `tea.Cmd`s that dial the server and perform one
+      rpc each, reported back into the bubbletea loop as `gameStateMsg`/
+      `gameErrMsg`. The bubbletea flow itself (`cli/cli.go`) was rebuilt
+      around them — menu -> `actions.TurnView` (per-action input
+      collection + local format validation) -> `actions.SubmitMsg` ->
+      `model.dispatch` (resolves the typed index against the current
+      lineup/hand, then fires the matching network `tea.Cmd`).
+      `cli/actions/{playGemCard,getGemCard,getGolemCard,rest}.go`'s
+      constructors (previously fully commented out, referencing a
+      `models` package that no longer exists post-restructuring) were
+      rewritten against the current architecture rather than merely
+      uncommented.
+- [x] Support pointing the CLI at either a local server or a deployed one
       (flag/env for the address).
-- [ ] Clean up the dead/unused fields flagged by lint in `cli/game.go`,
+      Done (`cmd/cli/cli.go`): `-addr`/`GAME_SERVER_ADDR`, mirroring
+      `cmd/server`'s own `-addr`/`GAME_SERVER_ADDR` convention exactly
+      (same flag name, same env var, same default-fallback helper).
+- [x] Clean up the dead/unused fields flagged by lint in `cli/game.go`,
       `cli/player.go`, `cli/actions/turnView.go`, `cli/cli.go` as part of
       rewiring these files for real network calls — don't do this as a
       separate pass; it's only cheap to fix now because you're already
       rewriting the file for the connectivity change.
-- [ ] Extract the `fmt.Scan`/`fmt.Scanln` terminal-I/O prompts currently
+      Done. `cli/game.go` (`Game`) and `cli/player.go` (`Player`) fields
+      were never dead in the sense of being pointless — they were
+      genuinely meant to hold server-fetched state, just never wired to a
+      real `Unmarshall*` populating them (both had this half-written,
+      commented out). Both are implemented for real now and every field is
+      read (`String()`/lineup-index resolution/etc.), which is what
+      resolved the lint findings — not deletion. `cli/actions/turnView.go`
+      was the one file where the fields' original *design* was the
+      problem, not just missing wiring: `action func() error` was a
+      closure meant to be bound once at construction (matching the old
+      pre-restructuring domain methods that did their own `fmt.Scan`
+      internally), which cannot work against bubbletea's value-semantics
+      `Update` loop (a closure capturing construction-time `textinput`
+      values would never see what the user actually typed, since each
+      `Update` call returns a new `TurnView` value rather than mutating in
+      place). Changed to `action func(values []string) error`, called with
+      values read fresh from `v.inputs` at submit time; `error` is now
+      rendered in `View()` instead of sitting unread.
+- [x] Extract the `fmt.Scan`/`fmt.Scanln` terminal-I/O prompts currently
       living in `internal/core/domain/game.go` (`GetGemCard`, `BuyGolem`,
       `NextTurn`) out of the domain layer and into the CLI. Flagged during
       Stage 2 as a cleanup item, but it's stronger than that now: the new
@@ -218,6 +292,24 @@ Tasks:
       cleanliness. Do this before or alongside the service-method task above,
       whichever order actually works out. Also resolves the errcheck lint
       findings on those unchecked `fmt.Scan*` calls (see Stage 1's note).
+      Done. `GetGemCard(index int, payment string)`, `BuyGolem(index int)`,
+      and `NextTurn(discards string)` are now pure mutation, taking an
+      already-decided answer instead of prompting; all `fmt.Scan*` calls
+      are gone from `internal/core/domain/game.go` (errcheck findings
+      resolved as a consequence, not a separate pass). The CLI's
+      `actions.TurnView` constructors are the client-side prompting half.
+      Two pre-existing bugs surfaced and fixed while rewriting these exact
+      lines (both directly in the code being touched, not a separate
+      sweep): `GetGemCard`'s payment-distribution loop computed
+      `pile.Yellow += 1` etc. on a local copy and never wrote it back to
+      `g.LooseGems[i]`, so bypass payments were silently discarded; and
+      `Player.CanAfford` OR'd its four gem-color comparisons together
+      instead of AND'ing them (so holding enough of *any one* color, even
+      zero of the others, counted as affordable), which would have made
+      the golem-purchase success criterion's reject-when-unaffordable path
+      nearly untestable. Fixed to AND (`internal/core/domain/player.go`).
+      `BuyGolem` also gained a checked `Gems.remove` (was
+      unchecked/ignored before).
 
 **Success criteria:**
 ```
@@ -225,6 +317,25 @@ cd game && make run_server &
 cd game && ./bin/cli   # can create/join a game and play a full turn against
                         # the running server, not local-only logic
 ```
+Verified two ways:
+- Automated: `go test ./cli/... -run TestCLIPlaysFullTurnOverGRPC -v`
+  (`cli/client_test.go`) — mirrors Stage 2's
+  `TestCreateGameRoundTripsOverGRPC` pattern: starts the real composition
+  root on a real `net.Listener`, then drives it with the CLI's own network
+  `tea.Cmd`s (`createGame`/`getGemCard`/`buyGolem`/`rest` — the same code
+  the bubbletea program dispatches) through create -> get gem card -> buy
+  golem (asserts either the purchase succeeds and `player.golems` grows by
+  one, or it's rejected with a `FailedPrecondition` and state is
+  unchanged) -> rest -> turn advances to player 1. Passed 9/9 runs
+  (`-count=1`, run 8 times individually plus once via `make all`), stable
+  across the golem lineup's shuffle.
+- Manual, over a real pty (this sandbox has no tty, so `tmux` stood in for
+  one): `./bin/server` on `:50999`, `./bin/cli -addr localhost:50999
+  -players 2` in a `tmux` pane, driven with real keystrokes through get
+  gem card (hand 2 -> 3 cards, gem deck 37 -> 36), buy golem index 0
+  (correctly rejected: "You cannot afford this card", state unchanged),
+  and rest (turn advanced to "player 1's turn", player 1's starting gems
+  shown correctly). `q` quits the program cleanly.
 
 ## Stage 4 — ML pluggability (deferred, not started)
 

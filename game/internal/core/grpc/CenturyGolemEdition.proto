@@ -9,15 +9,14 @@ package grpc;
 
 // Interface exported by the server.
 service Game {
-  // A simple RPC.
-  //
-  // Obtains the feature at a given position.
-  //
-  // A feature with an empty name is returned if there's no feature at the given
-  // position.
-  rpc GetCard(GetCardMessage) returns (GemCard) {}
+  // Pick up a gem card from the lineup (paying one gem per card bypassed).
+  rpc GetCard(GetCardMessage) returns (GetCardResponse) {}
   rpc NewGame(CreateGameMessage) returns (CreateGameResponse) {}
   rpc PlayGemCard(PlayGemCardMessage) returns (PlayGemCardResponse) {}
+  // Buy a golem card from the lineup.
+  rpc BuyGolem(BuyGolemMessage) returns (BuyGolemResponse) {}
+  // End the current player's turn, discarding down to 10 gems if required.
+  rpc Rest(RestMessage) returns (RestResponse) {}
   // A server-to-client streaming RPC.
   //
   // Obtains the Features available within the given Rectangle.  Results are
@@ -39,8 +38,18 @@ service Game {
   /* rpc PlayAction(GameAction) returns (Game) {} */
 }
 
-message GetCardMessage{
-  int32 game_id = 1;
+message GetCardMessage {
+  string game_id = 1;
+  int32 player = 2;
+  // The lineup card the player wants to pick up (matched by value against
+  // the current gem lineup).
+  GemCard card = 3;
+  // One gem letter (y/g/b/p) per lineup card bypassed to reach `card`.
+  string payment = 4;
+}
+
+message GetCardResponse {
+  GameState game_state = 1;
 }
 
 message GemValues {
@@ -69,26 +78,59 @@ message CreateGameResponse {
   GameState game_state = 1;
 }
 
-message GameState{ 
-  repeated Player other_players = 1;
-  repeated GemCard gem_lineup = 2;
-  int32 gem_deck_size = 3;
-  repeated GolemCard golem_lineup = 4;
-  int32 golem_deck_size = 5;
-  repeated GemValues player_gems = 6;
-  int32 gold_coins = 7;
-  int32 silver_coins = 8;
-  Player player = 9;
+message GameState{
+  // The game this state belongs to — a client must pass this back as
+  // `game_id` on every subsequent request. It is the only place a client
+  // ever learns a newly created game's ID.
+  string game_id = 1;
+  // Index into the game's player list whose turn it currently is — the
+  // index a client must pass back as `player` on its next request.
+  int32 current_player = 2;
+  repeated Player other_players = 3;
+  repeated GemCard gem_lineup = 4;
+  int32 gem_deck_size = 5;
+  repeated GolemCard golem_lineup = 6;
+  int32 golem_deck_size = 7;
+  repeated GemValues player_gems = 8;
+  int32 gold_coins = 9;
+  int32 silver_coins = 10;
+  // The current player's own view (hand, golems, coins, gems).
+  Player player = 11;
 }
 
 message PlayGemCardMessage {
-  int32 game_id = 1;
-  GemCard card = 2;
-  GemValues discarded = 3;
+  string game_id = 1;
+  int32 player = 2;
+  GemCard card = 3;
+  GemValues discarded = 4;
 }
 
 message PlayGemCardResponse {
-  GameState game_state = 2;
+  GameState game_state = 1;
+}
+
+message BuyGolemMessage {
+  string game_id = 1;
+  int32 player = 2;
+  // The lineup golem the player wants to buy (matched by value against the
+  // current golem lineup).
+  GolemCard golem = 3;
+}
+
+message BuyGolemResponse {
+  GameState game_state = 1;
+}
+
+message RestMessage {
+  string game_id = 1;
+  int32 player = 2;
+  // Gems to discard, one letter (y/g/b/p) per gem, if the current player
+  // holds more than 10 gems. Ignored (must be empty) otherwise.
+  string discards = 3;
+}
+
+message RestResponse {
+  GameState game_state = 1;
 }
 
 message Player {
