@@ -113,3 +113,34 @@ func UnmarshallGolemCard(card *pb.GolemCard) GolemCard {
     Points: int(card.Points),
   }
 }
+
+// MarshallGemValue is GemValue's wire form, used both standalone and inside
+// MarshallGemCard/MarshallGolemCard.
+func MarshallGemValue(g GemValue) *pb.GemValues {
+  return &pb.GemValues{
+    Yellow: int32(g.Yellow),
+    Green:  int32(g.Green),
+    Blue:   int32(g.Blue),
+    Pink:   int32(g.Pink),
+  }
+}
+
+// MarshallGemCard is UnmarshallGemCard's inverse — needed because the CLI
+// selects a card from a lineup/hand it already fetched (as a GemCard) and
+// must send that same card back to identify it (game_service resolves it
+// back to a lineup/hand index by value).
+func MarshallGemCard(card GemCard) *pb.GemCard {
+  return &pb.GemCard{
+    In:       MarshallGemValue(card.In),
+    Out:      MarshallGemValue(card.Out),
+    Upgrades: int32(card.Upgrades),
+  }
+}
+
+// MarshallGolemCard is UnmarshallGolemCard's inverse — see MarshallGemCard.
+func MarshallGolemCard(card GolemCard) *pb.GolemCard {
+  return &pb.GolemCard{
+    Cost:   MarshallGemValue(card.Cost),
+    Points: int32(card.Points),
+  }
+}

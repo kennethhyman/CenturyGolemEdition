@@ -55,35 +55,37 @@ func (g *Game) PlayGemCard(gem_card GemCard, discards GemValues) error {
 	return err
 }
 
-// get gem card
-func (g *Game) GetGemCard() error {
+// GetGemCard picks up the gem card at index from the face-up lineup for the
+// current player, paying one gem (per parsed character of payment) onto
+// each bypassed lineup slot.
+//
+// This is the mutation half of the old prompt-and-mutate GetGemCard: the
+// prompting ("which card", "which gems to pay") is a CLI concern and lives
+// client-side (see cli.PromptGetGemCard); this method only applies an
+// already-decided index/payment, so it can run inside a server process that
+// has no terminal to prompt on.
+//
+// Pre: index is in range for g.GemCards.Stack; if index > 0, payment has
+// exactly `index` gem-letter characters (y/g/b/p) and the current player
+// holds those gems.
+// Post: on success, the drawn card joins the current player's hand, the
+// loose gems sitting on index move to the player, and payment gems land one
+// per bypassed pile. On error, no state is mutated for cases caught before
+// the draw; errors from GemCards.Draw itself may still have consumed cards
+// per LineUp's own contract.
+func (g *Game) GetGemCard(index int, payment string) error {
 	player := g.Players[g.CurrentPlayer]
-	var index int
-	var err error
 
-	fmt.Printf("Which gemcard would you like to pick up?\n%v\n", g.GemCards.String())
-	for _, err := fmt.Scan(&index); err != nil; {
-		fmt.Printf("invalid input...")
-		fmt.Printf("Which gemcard would you like to pick up?\n%v\n", g.GemCards.String())
-	}
-
-	var cost string
 	if index > 0 {
-		fmt.Printf("Which gems would you like to place on the previous cards? (select %v gem)\n", index)
-		fmt.Scanln(&cost)
-
-		if len(cost) != index {
+		if len(payment) != index {
 			return errors.New("You must pay one gem per card you bypass")
 		}
-		gemCost, err := parseGemInput(cost)
-
+		gemCost, err := parseGemInput(payment)
 		if err != nil {
 			return err
 		}
 
-		err = player.Gems.remove(gemCost)
-		if err != nil {
-			fmt.Printf("%v\n", err)
+		if err := player.Gems.remove(gemCost); err != nil {
 			return err
 		}
 	}
@@ -91,15 +93,14 @@ func (g *Game) GetGemCard() error {
 	// Draw card
 	card, err := g.GemCards.Draw(index)
 	if err != nil {
-		fmt.Printf("%v\n", err)
 		return err
 	}
 	player.AddCard(card)
 	player.Gems.add(g.LooseGems[index])
 	g.LooseGems[index] = GemValues{}
-	fmt.Printf("Hand addr: %p\n", &player.Hand)
+
 	// Add gems to piles
-	for i, gem := range cost {
+	for i, gem := range payment {
 		pile := g.LooseGems[i]
 
 		switch string(gem) {
@@ -112,10 +113,12 @@ func (g *Game) GetGemCard() error {
 		case "p", "P":
 			pile.Pink += 1
 		}
+
+		g.LooseGems[i] = pile
 	}
 
 	g.Players[g.CurrentPlayer] = player
-	return err
+	return nil
 }
 
 // pick up cards
@@ -127,13 +130,21 @@ func (g *Game) PickUpGemCards() error {
 	return nil
 }
 
-// buy golems
-func (g *Game) BuyGolem() error {
+// BuyGolem buys the golem card at index from the face-up lineup for the
+// current player.
+//
+// Mutation half of the old prompt-and-mutate BuyGolem: prompting ("which
+// golem") is a CLI concern (see cli.PromptBuyGolem); this method only
+// applies an already-decided index, so it can run server-side.
+//
+// Pre: 0 <= index < len(g.Golems.Stack).
+// Post: on success, the golem joins the current player's Golems, its cost
+// is removed from the player's gems, and a bonus coin is granted per the
+// index-based coin rule below. On error (out of range, or the player can't
+// afford it), no state is mutated.
+func (g *Game) BuyGolem(index int) error {
 	player := g.Players[g.CurrentPlayer]
-	var index int
 
-	fmt.Printf("Which golem would you like to buy?\n%v\n", g.Golems)
-	fmt.Scan(&index)
 	// check index in bounds
 	if index >= len(g.Golems.Stack) || index < 0 {
 		return errors.New("There is no golem at that index")
@@ -144,8 +155,12 @@ func (g *Game) BuyGolem() error {
 	if !player.CanAfford(golem) {
 		return errors.New("You cannot afford this card")
 	}
-	// Remove gems and add card
-	player.Gems.remove(golem.Cost())
+	// Remove gems and add card. CanAfford already confirmed the player holds
+	// golem.Cost(), so remove() failing here would mean CanAfford and remove
+	// disagree on affordability — a design bug, not a caller error.
+	if err := player.Gems.remove(golem.Cost()); err != nil {
+		return fmt.Errorf("CanAfford said yes but remove failed: %w", err)
+	}
 	player.AddGolemCard(golem)
 
 	// Add coins if applicable
@@ -191,52 +206,72 @@ func (g Game) Finished() bool {
 	return (g.CurrentPlayer == 0) && golem_limit_reached
 }
 
-func (g *Game) NextTurn() {
+// NextTurn ends the current player's turn and advances to the next one.
+//
+// If the current player holds more than 10 gems, discards (one gem letter
+// y/g/b/p per character) must bring them down to 10 or fewer — this is the
+// mutation half of the old prompt-in-a-loop NextTurn; deciding what to
+// discard is a CLI concern (see cli.PromptRest), which loops client-side
+// until it has a valid answer and then calls this once. Pass "" when the
+// player already holds 10 or fewer gems.
+//
+// Pre: if the current player holds more than 10 gems, discards must be
+// non-empty and, once removed, bring their count to 10 or fewer.
+// Post: on success, discards are removed from the current player's gems and
+// g.CurrentPlayer advances (wrapping) to the next player. On error, no
+// state is mutated and the turn does not advance.
+func (g *Game) NextTurn(discards string) error {
 	current_player := g.Players[g.CurrentPlayer]
 
-	// Trigger gem discards
-	for current_player.Gems.count() > 10 {
-		var user_input string
-		fmt.Printf("You have too many gems, you must discard down to 10\n%v\n", current_player.Gems)
-		fmt.Scan(&user_input)
-		discards, err := parseGemInput(user_input)
-		if err == nil {
-			current_player.Gems.remove(discards)
+	if current_player.Gems.count() > 10 {
+		discardGems, err := parseGemInput(discards)
+		if err != nil {
+			return err
+		}
+		if err := current_player.Gems.remove(discardGems); err != nil {
+			return err
+		}
+		if current_player.Gems.count() > 10 {
+			return errors.New("You have too many gems, you must discard down to 10")
 		}
 	}
-	// set next Players
 
+	g.Players[g.CurrentPlayer] = current_player
 	g.CurrentPlayer = (g.CurrentPlayer + 1) % len(g.Players)
+	return nil
 }
 
-func MarshallGame(game *Game) *pb.CreateGameResponse {
-  //var otherPlayers []*pb.Player
+// MarshallGameState builds the wire GameState for game from the current
+// player's point of view: Player is the hand/gems/coins of whoever's turn
+// it is, and CurrentPlayer is that player's index — callers must echo it
+// back as the `player` field on their next request (PlayGemCard/GetCard/
+// BuyGolem/Rest all validate the caller is actually up).
+func MarshallGameState(game *Game) *pb.GameState {
   var gem_lineup []*pb.GemCard
   var golem_lineup []*pb.GolemCard
 
-  for _, card := range(game.GemCards.Stack) {
-    marshalled_card := MarshallGemCard(&card)
-    gem_lineup = append(gem_lineup, marshalled_card)
-    fmt.Printf("%v\n", marshalled_card)
+  for _, card := range game.GemCards.Stack {
+    gem_lineup = append(gem_lineup, MarshallGemCard(&card))
   }
 
-  for _, card := range(game.Golems.Stack) {
-    marshalled_card := MarshallGolemCard(&card)
-    golem_lineup = append(golem_lineup, marshalled_card)
-    fmt.Printf("%v\n", marshalled_card)
+  for _, card := range game.Golems.Stack {
+    golem_lineup = append(golem_lineup, MarshallGolemCard(&card))
   }
 
-  fmt.Printf("GemCard length: %v", len(game.GemCards.Stack))
-
-  return &pb.CreateGameResponse {
-    GameState: &pb.GameState{
-      GemLineup: gem_lineup,
-      GemDeckSize: int32(game.GemCards.Remaining()),
-      GolemLineup: golem_lineup,
-      GolemDeckSize: int32(game.Golems.Remaining()),
-      GoldCoins: int32(game.GoldCoins),
-      SilverCoins: int32(game.SilverCoins),
-      Player: MarshallPlayer(game.Players[0]),
-    },
+  return &pb.GameState{
+    GameId: game.ID,
+    CurrentPlayer: int32(game.CurrentPlayer),
+    GemLineup: gem_lineup,
+    GemDeckSize: int32(game.GemCards.Remaining()),
+    GolemLineup: golem_lineup,
+    GolemDeckSize: int32(game.Golems.Remaining()),
+    GoldCoins: int32(game.GoldCoins),
+    SilverCoins: int32(game.SilverCoins),
+    Player: MarshallPlayer(game.Players[game.CurrentPlayer]),
   }
+}
+
+// MarshallGame wraps MarshallGameState in the NewGame RPC's response shape.
+func MarshallGame(game *Game) *pb.CreateGameResponse {
+  return &pb.CreateGameResponse{GameState: MarshallGameState(game)}
 }
