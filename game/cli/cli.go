@@ -10,7 +10,7 @@ type model struct {
   game Game
 }
 
-var actionsChoices = []tea.Model{turns.PlayGemCard, turns.GetGemCard, turns.Rest, turns.GetGolemCard}
+var actionsChoices = []tea.Model{actions.PlayGemCard, actions.GetGemCard, actions.Rest, actions.GetGolemCard}
 
 func InitialModel() model {
 	return model {

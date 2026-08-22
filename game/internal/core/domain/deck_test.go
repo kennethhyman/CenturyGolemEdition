@@ -10,7 +10,7 @@ func TestDrawCard(t *testing.T) {
 	// DrawCard
 	_, err := deck.DrawCard()
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatal(err)
 	}
 
 	// ensure deck decreases in size

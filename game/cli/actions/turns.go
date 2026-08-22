@@ -1,4 +1,4 @@
-package turns
+package actions
 
 import (
 	tea "github.com/charmbracelet/bubbletea"

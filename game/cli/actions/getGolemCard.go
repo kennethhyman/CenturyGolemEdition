@@ -1,4 +1,4 @@
-package turns
+package actions
 
 //import (
 //	"github.com/charmbracelet/bubbles/textinput"

@@ -1,9 +1,9 @@
 SHELL := /bin/bash
 
-.SILENT: build_protos build_game test_game
+.SILENT: build_protos build_game test_game tidy vet lint run_server run_cli clean
 
 
-all: build_protos build_game
+all: tidy vet build_protos build_game test_game
 
 build_game:
 	echo "building game..."
@@ -15,6 +15,28 @@ build_protos:
 		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 		internal/core/grpc/CenturyGolemEdition.proto
 
-test_game: build_game
+test_game:
 	echo "running tests..."
-	go test ./models/ -v
+	go test ./... -v
+
+tidy:
+	echo "tidying go.mod..."
+	go mod tidy
+
+vet:
+	echo "vetting..."
+	go vet ./...
+
+lint:
+	echo "linting..."
+	golangci-lint run ./...
+
+run_server: build_game
+	./bin/server
+
+run_cli: build_game
+	./bin/cli
+
+clean:
+	echo "cleaning..."
+	rm -rf ./bin
